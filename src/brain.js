@@ -6,10 +6,21 @@ const config = require('./config');
 
 const groq = new Groq({ apiKey: config.groqApiKey });
 
+const CONTEXT_FILE = path.join(config.dataDir, 'context.txt');
+
+function buildSystem() {
+  let ctx = '';
+  try {
+    ctx = fs.readFileSync(CONTEXT_FILE, 'utf8').trim();
+  } catch {}
+  const extra = ctx ? `\n\nContexto sobre o Joel (CV/notas):\n${ctx.slice(0, 8000)}` : '';
+  return config.systemPrompt + extra;
+}
+
 async function chat(history) {
   const res = await groq.chat.completions.create({
     model: config.chatModel,
-    messages: [{ role: 'system', content: config.systemPrompt }, ...history],
+    messages: [{ role: 'system', content: buildSystem() }, ...history],
     temperature: 0.6,
     max_tokens: 800,
   });

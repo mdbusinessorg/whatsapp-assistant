@@ -10,6 +10,7 @@ const defaults = {
   paused: false, // assistente em pausa global
   replyGroups: false, // responder em grupos só quando mencionado/chamado
   chatsMuted: [], // jids onde o assistente não responde
+  introduced: {}, // jid -> true quando o assistente já se apresentou
 };
 
 function readJson(file, fallback) {

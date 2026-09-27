@@ -17,5 +17,8 @@
     "groq-sdk": "1.6.0",
     "pino": "9.5.0",
     "qrcode": "1.5.4"
+  },
+  "devDependencies": {
+    "pdf-parse": "^2.4.5"
   }
 }

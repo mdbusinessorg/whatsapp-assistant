@@ -98,6 +98,13 @@ async function handleIncoming(msg) {
     }
     if (!userText) return;
 
+    // Primeira interação neste chat: o modelo deve apresentar-se como assistente do Joel
+    if (!state.introduced[jid]) {
+      pushHistory(jid, 'system', 'Esta é a primeira mensagem desta pessoa neste chat. Apresenta-te como o assistente do Joel (ele está ausente) antes de responder.');
+      state.introduced[jid] = true;
+      saveState();
+    }
+
     pushHistory(jid, 'user', userText);
     const reply = await brain.chat(getHistory(jid));
     if (reply) {
@@ -146,6 +153,26 @@ async function connect() {
       } else {
         log('sessão terminada (logout) — apaga data/auth e faz novo QR.');
       }
+    }
+  });
+
+  // Histórico sincronizado pelo WhatsApp (últimas mensagens de cada conversa)
+  sock.ev.on('messaging-history.set', ({ messages }) => {
+    let seeded = 0;
+    for (const msg of messages || []) {
+      const jid = msg.key?.remoteJid;
+      if (!jid || jid.endsWith('@g.us') || jid === 'status@broadcast') continue;
+      const text = extractText(msg).trim();
+      if (!text) continue;
+      const role = msg.key.fromMe ? 'assistant' : 'user';
+      const h = getHistory(jid);
+      if (h.length >= 10) continue;
+      pushHistory(jid, role, `[histórico] ${text.slice(0, 300)}`);
+      seeded++;
+    }
+    if (seeded) {
+      saveHistories();
+      log(`histórico sincronizado: ${seeded} mensagens importadas`);
     }
   });
 
