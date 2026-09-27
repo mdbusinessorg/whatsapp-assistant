@@ -59,6 +59,20 @@ ${qrImg ? `<div class="card"><b>Escaneia com o WhatsApp</b> (Aparelhos ligados â
 </body></html>`);
 });
 
+app.post('/send', async (req, res) => {
+  const to = String(req.body.to || '').replace(/\D/g, '');
+  const text = String(req.body.text || '').slice(0, 4000);
+  if (!to || !text) return res.status(400).send('Falta "to" e/ou "text".');
+  const jid = to.includes('@') ? to : `${to}@s.whatsapp.net`;
+  try {
+    await wa.send(jid, text);
+    wa.log(`manual: enviado para ${jid}`);
+    res.json({ ok: true, to: jid });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
 app.post('/toggle', async (req, res) => {
   await wa.setPaused(!wa.status().paused);
   res.redirect('/');
