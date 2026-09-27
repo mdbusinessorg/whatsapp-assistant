@@ -31,6 +31,20 @@ async function chat(history) {
   return (res.choices[0]?.message?.content || '').trim();
 }
 
+// Pergunta solta (fora de uma conversa) — usado para relatórios
+async function ask(prompt) {
+  const res = await groq.chat.completions.create({
+    model: config.chatModel,
+    messages: [
+      { role: 'system', content: buildSystem() },
+      { role: 'user', content: prompt },
+    ],
+    temperature: 0.3,
+    max_tokens: 1000,
+  });
+  return (res.choices[0]?.message?.content || '').trim();
+}
+
 // buffer de áudio (ogg/opus do WhatsApp) -> texto via Whisper na Groq
 async function transcribe(audioBuffer, mimetype = 'audio/ogg') {
   const ext = mimetype.includes('mpeg') ? 'mp3' : mimetype.includes('mp4') || mimetype.includes('m4a') ? 'm4a' : 'ogg';
@@ -48,4 +62,4 @@ async function transcribe(audioBuffer, mimetype = 'audio/ogg') {
   }
 }
 
-module.exports = { chat, transcribe };
+module.exports = { chat, ask, transcribe };

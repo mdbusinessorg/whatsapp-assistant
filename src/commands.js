@@ -1,4 +1,5 @@
-const { state, saveState, addReminder, reminders, removeReminder, clearHistory } = require('./state');
+const { state, saveState, addReminder, reminders, removeReminder, clearHistory, contactsSince } = require('./state');
+const brain = require('./brain');
 
 const HELP = `*Mega Assistente* 🤖 — comandos:
 
@@ -11,6 +12,8 @@ const HELP = `*Mega Assistente* 🤖 — comandos:
 *!mudo* / *!voz* — silenciar/ativar o assistente neste chat (dono)
 *!grupos on|off* — responder em grupos (dono)
 *!status* — estado do assistente
+*!nota <texto>* — definir a tua nota/rotina atual (dono)
+*!hoje* — relatório de quem falou hoje e o que queria (dono)
 
 Também entendo *mensagens de voz* 🎙️ — envia um áudio e eu transcrevo e respondo.`;
 
@@ -25,13 +28,13 @@ function isOwner(jid, fromMe, ownerNumber, selfNum) {
 }
 
 // Devolve string de resposta (já enviável) ou null se não era comando.
-// ctx: { jid, isGroup, fromMe, ownerNumber, selfNum, send(jid, text) }
+// ctx: { jid, isGroup, fromMe, owner, selfNum }
 async function handle(text, ctx) {
   const t = text.trim();
   if (!t.startsWith('!')) return null;
   const [cmd, ...rest] = t.slice(1).split(/\s+/);
   const arg = rest.join(' ');
-  const owner = isOwner(ctx.jid, ctx.fromMe, ctx.ownerNumber, ctx.selfNum);
+  const owner = ctx.owner;
 
   switch (cmd.toLowerCase()) {
     case 'ajuda':
@@ -86,6 +89,28 @@ async function handle(text, ctx) {
       state.replyGroups = on;
       saveState();
       return `👥 Responder em grupos: ${on ? 'ON' : 'OFF'} (off = só quando me chamam).`;
+    }
+    case 'nota': {
+      if (!owner) return '⛔ Só o dono.';
+      if (!arg) return 'Uso: *!nota <texto>* — ex.: !nota em reunião até às 18h';
+      state.ownerNote = arg.slice(0, 500);
+      state.ownerNoteAt = Date.now();
+      saveState();
+      return '📝 Anotado — passei a usar isto como tua nota atual.';
+    }
+    case 'hoje':
+    case 'relatorio': {
+      if (!owner) return '⛔ Só o dono.';
+      const dayStart = Date.parse(new Date(Date.now() + 3600000).toISOString().slice(0, 10) + 'T00:00:00Z') - 3600000;
+      const today = contactsSince(dayStart);
+      if (!today.length) return '📋 Hoje ainda ninguém falou comigo.';
+      const lines = today
+        .map((c) => `+${c.num}${c.name ? ` (${c.name})` : ''}: ${c.text.slice(0, 120)}${c.urgent ? ' [URGENTE]' : ''}`)
+        .join('\n');
+      const summary = await brain
+        .ask(`Resume em bullets quem procurou o Joel hoje e o que cada um queria. Sê direto.\n\n${lines}`)
+        .catch(() => null);
+      return `📋 *Resumo de hoje*\n\n${summary || lines}`;
     }
     case 'status':
       return (

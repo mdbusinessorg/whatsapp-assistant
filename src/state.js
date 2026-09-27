@@ -5,6 +5,7 @@ const config = require('./config');
 const STATE_FILE = path.join(config.dataDir, 'state.json');
 const REMINDERS_FILE = path.join(config.dataDir, 'reminders.json');
 const HISTORY_FILE = path.join(config.dataDir, 'history.json');
+const CONTACTS_FILE = path.join(config.dataDir, 'contacts.json');
 
 const defaults = {
   paused: false, // assistente em pausa global
@@ -33,6 +34,7 @@ function writeJson(file, obj) {
 const state = { ...defaults, ...readJson(STATE_FILE, {}) };
 let reminders = readJson(REMINDERS_FILE, []);
 let histories = readJson(HISTORY_FILE, {}); // jid -> [{role, content}]
+let contactsLog = readJson(CONTACTS_FILE, []); // {ts, jid, num, name, text, urgent}
 
 const MAX_HISTORY = 20;
 
@@ -61,5 +63,14 @@ module.exports = {
   },
   saveHistories() {
     writeJson(HISTORY_FILE, histories);
+  },
+
+  logContact(entry) {
+    contactsLog.push(entry);
+    while (contactsLog.length > 2000) contactsLog.shift();
+    writeJson(CONTACTS_FILE, contactsLog);
+  },
+  contactsSince(ms) {
+    return contactsLog.filter((c) => c.ts >= ms);
   },
 };

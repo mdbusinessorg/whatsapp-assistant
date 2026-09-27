@@ -10,7 +10,7 @@ const {
 } = require('@whiskeysockets/baileys');
 
 const config = require('./config');
-const { state, saveState, getHistory, pushHistory, saveHistories, reminders, removeReminder } = require('./state');
+const { state, saveState, getHistory, pushHistory, saveHistories, reminders, removeReminder, logContact, contactsSince } = require('./state');
 const brain = require('./brain');
 const commands = require('./commands');
 
@@ -63,23 +63,23 @@ async function handleIncoming(msg) {
   const text = extractText(msg).trim();
   const audio = msg.message?.audioMessage;
 
-  // Comandos (inclui os enviados pelo dono, fromMe)
-  const owner = jidNum(jid) === config.ownerNumber || (!config.ownerNumber && (fromMe || jidNum(jid) === selfNum));
+  // Identidade do remetente: o WhatsApp pode entregar como @lid — o nº real vem em remoteJidAlt/participantAlt
+  const senderNum = jidNum(
+    msg.key.remoteJidAlt || msg.key.participantAlt || msg.key.participant || jid
+  );
+  const owner =
+    senderNum === config.ownerNumber || jidNum(jid) === config.ownerNumber || (!config.ownerNumber && (fromMe || jidNum(jid) === selfNum));
+  log(`msg de +${senderNum}${owner ? ' (dono)' : ''} jid=${jid}`);
+
   if (fromMe && !owner && !text.startsWith('!')) return;
 
   if (text.startsWith('!')) {
-    const reply = await commands.handle(text, {
-      jid,
-      isGroup,
-      fromMe,
-      ownerNumber: config.ownerNumber,
-      selfNum,
-    });
+    const reply = await commands.handle(text, { jid, isGroup, fromMe, owner, selfNum });
     if (reply) await send(jid, reply);
     return;
   }
 
-  // Mensagem do número principal do dono: vira "nota de rotina" e resolve urgentes pendentes
+  // Mensagem do dono: resolve urgentes pendentes e segue para resposta normal da IA
   if (owner && !isGroup && text) {
     for (const [pjid, ts] of Object.entries(state.pendingUrgent)) {
       if (Date.now() - ts < 30 * 60000) {
@@ -87,11 +87,7 @@ async function handleIncoming(msg) {
       }
       delete state.pendingUrgent[pjid];
     }
-    state.ownerNote = text.slice(0, 500);
-    state.ownerNoteAt = Date.now();
     saveState();
-    await send(jid, '📝 Anotado — passei a usar isto como tua nota atual.');
-    return;
   }
 
   if (state.paused || state.chatsMuted.includes(jid)) return;
@@ -112,6 +108,17 @@ async function handleIncoming(msg) {
       await send(jid, `🎙️ _Transcrição:_ ${transcript}`);
     }
     if (!userText) return;
+
+    if (!owner && !fromMe) {
+      logContact({
+        ts: Date.now(),
+        jid,
+        num: senderNum,
+        name: msg.pushName || '',
+        text: userText.slice(0, 500),
+        urgent: /urgente|urg[êe]ncia|emerg[êe]ncia|\basap\b/i.test(userText),
+      });
+    }
 
     // Primeira interação neste chat: o modelo deve apresentar-se como assistente do Joel
     if (!state.introduced[jid]) {
@@ -210,6 +217,26 @@ async function connect() {
     }
   });
 }
+
+// Resumo diário automático para o dono — 19h em Luanda (18h UTC)
+let lastDigestDay = '';
+setInterval(async () => {
+  if (!config.ownerNumber || !sock?.user) return;
+  const luanda = new Date(Date.now() + 3600000); // UTC+1
+  const day = luanda.toISOString().slice(0, 10);
+  if (luanda.getUTCHours() !== 19 || lastDigestDay === day) return;
+  const dayStart = Date.parse(`${day}T00:00:00Z`) - 3600000;
+  const today = contactsSince(dayStart);
+  if (!today.length) return;
+  lastDigestDay = day;
+  const lines = today
+    .map((c) => `+${c.num}${c.name ? ` (${c.name})` : ''}: ${c.text.slice(0, 120)}${c.urgent ? ' [URGENTE]' : ''}`)
+    .join('\n');
+  const summary = await brain
+    .ask(`Resume em bullets quem procurou o Joel hoje e o que cada um queria. Sê direto.\n\n${lines}`)
+    .catch(() => lines);
+  await send(`${config.ownerNumber}@s.whatsapp.net`, `📋 *Resumo do dia*\n\n${summary}`).catch(() => {});
+}, 60000);
 
 // Lembretes: verifica a cada 15s
 setInterval(async () => {
