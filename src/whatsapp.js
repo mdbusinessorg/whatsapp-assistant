@@ -65,7 +65,12 @@ async function handleIncoming(msg) {
 
   // Identidade do remetente: o WhatsApp pode entregar como @lid — o nº real vem em remoteJidAlt/participantAlt
   const senderNum = jidNum(
-    msg.key.remoteJidAlt || msg.key.participantAlt || msg.key.participant || jid
+    msg.key.remoteJidAlt ||
+      msg.key.senderPn ||
+      msg.key.participantPn ||
+      msg.key.participantAlt ||
+      msg.key.participant ||
+      jid
   );
   const owner =
     senderNum === config.ownerNumber || jidNum(jid) === config.ownerNumber || (!config.ownerNumber && (fromMe || jidNum(jid) === selfNum));
