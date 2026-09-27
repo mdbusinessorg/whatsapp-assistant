@@ -15,8 +15,8 @@ module.exports = {
   port: Number(process.env.PORT || 8080),
   dataDir: process.env.DATA_DIR || path.join(__dirname, '..', 'data'),
   // Número do dono em formato internacional sem '+' (ex: 2449XXXXXXXX).
-  // Se vazio, o dono é o próprio número ligado (mensagens fromMe contam como comandos do dono).
-  ownerNumber: (process.env.OWNER_NUMBER || '').replace(/\D/g, ''),
+  // Por defeito é o número principal do Joel.
+  ownerNumber: (process.env.OWNER_NUMBER || '244934859497').replace(/\D/g, ''),
   // Modelos Groq
   chatModel: process.env.CHAT_MODEL || 'openai/gpt-oss-120b',
   whisperModel: process.env.WHISPER_MODEL || 'whisper-large-v3',
