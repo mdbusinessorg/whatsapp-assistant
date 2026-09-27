@@ -60,7 +60,8 @@ a{color:#8ab4ff}
 </div>
 ${qrImg ? `<div class="card"><b>Escaneia com o WhatsApp</b> (Aparelhos ligados → Ligar aparelho):<br><br><img src="${qrImg}"></div>` : ''}
 <div class="card">
-  Grupos: ${s.replyGroups ? 'responde' : 'só quando chamado'} · Chats mudos: ${s.mutedChats} · Lembretes: ${s.reminders}
+  Grupos: ${s.replyGroups ? 'responde' : 'só quando chamado'} · Chats mudos: ${s.mutedChats} · Lembretes: ${s.reminders} · Urgentes pendentes: ${s.pendingUrgent}
+  ${s.ownerNote ? `<br>📝 <b>Nota do Joel:</b> ${s.ownerNote.replace(/</g, '&lt;')}` : ''}
 </div>
 <div class="card"><b>Contexto do assistente</b> (CV, notas, instruções — entra no prompt de todas as conversas)
 <form method="post" action="/context">

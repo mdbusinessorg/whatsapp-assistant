@@ -79,6 +79,21 @@ async function handleIncoming(msg) {
     return;
   }
 
+  // Mensagem do número principal do dono: vira "nota de rotina" e resolve urgentes pendentes
+  if (owner && !isGroup && text) {
+    for (const [pjid, ts] of Object.entries(state.pendingUrgent)) {
+      if (Date.now() - ts < 30 * 60000) {
+        await send(pjid, `✅ O teu assunto é importante — o Joel está disponível. Fala com ele diretamente: +244 ${config.ownerNumber.slice(3)}`).catch(() => {});
+      }
+      delete state.pendingUrgent[pjid];
+    }
+    state.ownerNote = text.slice(0, 500);
+    state.ownerNoteAt = Date.now();
+    saveState();
+    await send(jid, '📝 Anotado — passei a usar isto como tua nota atual.');
+    return;
+  }
+
   if (state.paused || state.chatsMuted.includes(jid)) return;
   if (isGroup && !state.replyGroups && !mentionedMe(msg)) return;
 
@@ -106,6 +121,18 @@ async function handleIncoming(msg) {
     }
 
     pushHistory(jid, 'user', userText);
+
+    // Assunto urgente: avisa o dono no número principal
+    if (!isGroup && config.ownerNumber && /urgente|urg[êe]ncia|emerg[êe]ncia|\basap\b/i.test(userText)) {
+      state.pendingUrgent[jid] = Date.now();
+      saveState();
+      await send(
+        `${config.ownerNumber}@s.whatsapp.net`,
+        `🚨 Mensagem URGENTE de +${jidNum(jid)}:\n"${userText.slice(0, 300)}"\n\nResponde aqui (qualquer texto) e eu dou-lhe o teu contacto principal.`
+      ).catch((e) => log(`aviso urgente falhou: ${e.message}`));
+      await send(jid, '⚡ Percebi que é urgente — já avisei o Joel no número principal dele.');
+    }
+
     const reply = await brain.chat(getHistory(jid));
     if (reply) {
       pushHistory(jid, 'assistant', reply);
@@ -201,6 +228,8 @@ function status() {
     replyGroups: state.replyGroups,
     mutedChats: state.chatsMuted.length,
     reminders: reminders().length,
+    ownerNote: state.ownerNote,
+    pendingUrgent: Object.keys(state.pendingUrgent).length,
     qr: latestQr,
     logs: panelLogs.slice(-100),
   };

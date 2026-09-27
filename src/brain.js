@@ -5,6 +5,7 @@ const path = require('path');
 const config = require('./config');
 
 const groq = new Groq({ apiKey: config.groqApiKey });
+const { state } = require('./state');
 
 const CONTEXT_FILE = path.join(config.dataDir, 'context.txt');
 
@@ -14,7 +15,10 @@ function buildSystem() {
     ctx = fs.readFileSync(CONTEXT_FILE, 'utf8').trim();
   } catch {}
   const extra = ctx ? `\n\nContexto sobre o Joel (CV/notas):\n${ctx.slice(0, 8000)}` : '';
-  return config.systemPrompt + extra;
+  const note = state.ownerNote
+    ? `\n\nNota atual do Joel (${new Date(state.ownerNoteAt).toLocaleString('pt-PT')}): ${state.ownerNote}\nUsa esta nota para dizer onde ele está / quando volta, mas resume — não copies à letra se tiver dados privados.`
+    : '';
+  return config.systemPrompt + extra + note;
 }
 
 async function chat(history) {

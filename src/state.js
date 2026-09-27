@@ -11,6 +11,9 @@ const defaults = {
   replyGroups: false, // responder em grupos só quando mencionado/chamado
   chatsMuted: [], // jids onde o assistente não responde
   introduced: {}, // jid -> true quando o assistente já se apresentou
+  ownerNote: '', // última nota/rotina deixada pelo dono
+  ownerNoteAt: 0,
+  pendingUrgent: {}, // jid -> ts de pedido urgente à espera do dono
 };
 
 function readJson(file, fallback) {
