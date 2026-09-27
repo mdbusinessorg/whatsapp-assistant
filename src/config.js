@@ -18,7 +18,7 @@ module.exports = {
   // Se vazio, o dono é o próprio número ligado (mensagens fromMe contam como comandos do dono).
   ownerNumber: (process.env.OWNER_NUMBER || '').replace(/\D/g, ''),
   // Modelos Groq
-  chatModel: process.env.CHAT_MODEL || 'llama-3.3-70b-versatile',
+  chatModel: process.env.CHAT_MODEL || 'openai/gpt-oss-120b',
   whisperModel: process.env.WHISPER_MODEL || 'whisper-large-v3',
   systemPrompt:
     process.env.SYSTEM_PROMPT ||
