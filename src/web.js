@@ -9,7 +9,16 @@ app.use(express.urlencoded({ extended: false }));
 // Auth por ?token= ou cookie
 app.use((req, res, next) => {
   const t = req.query.token || req.headers.cookie?.match(/wa_token=([^;]+)/)?.[1];
-  if (t !== config.webToken) return res.status(401).send('Não autorizado. Usa ?token=...');
+  if (t !== config.webToken) {
+    return res.status(401).send(`<!doctype html><html lang="pt"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1"><title>Mega Assistente — Login</title>
+<style>body{font-family:system-ui;background:#0f1115;color:#e8eaed;display:flex;min-height:90vh;align-items:center;justify-content:center;margin:0}
+.card{background:#1a1d24;border-radius:12px;padding:24px;max-width:360px;text-align:center}
+input{width:100%;padding:10px;border-radius:8px;border:1px solid #333;background:#111318;color:#fff;margin:12px 0;box-sizing:border-box}
+button{width:100%;padding:10px;border:0;border-radius:8px;background:#34d399;font-weight:600;cursor:pointer}</style></head>
+<body><div class="card"><h2>🤖 Mega Assistente</h2><p>Insere o token de acesso:</p>
+<form method="get" action="/"><input name="token" placeholder="WEB_TOKEN" autofocus><button>Entrar</button></form></div></body></html>`);
+  }
   res.setHeader('Set-Cookie', `wa_token=${t}; Path=/; HttpOnly; Max-Age=31536000`);
   next();
 });
