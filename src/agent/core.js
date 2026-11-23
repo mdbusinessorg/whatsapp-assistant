@@ -88,18 +88,25 @@ async function run(text, via = 'whatsapp') {
 }
 
 const directoryTools = new Set(['discover_shops', 'list_shops', 'shop_proposal', 'rate_shop']);
-function directoryReply(name, r) {
+function directoryResult(name, r) {
   const data = r.result;
   const shops = !data ? [] : name === 'discover_shops' ? data.shops : name === 'list_shops' ? data : [data];
   // Só IDs controlados pela aplicação podem voltar ao contexto com ferramentas privilegiadas.
   const ids = shops.map(s => s.id).filter(id => /^[a-z0-9-]{1,64}$/.test(id)).slice(0, 20);
-  S.memory.push({ role: 'assistant', content: `${name}: ${r.status}; IDs: ${ids.join(', ') || '—'}.` });
+  let reply;
+  if (r.status === 'waiting_approval') reply = 'A consulta requer aprovação. Confirmas?';
+  else if (r.status !== 'completed') reply = r.error || 'Não foi possível concluir.';
+  else if (name === 'rate_shop') reply = 'Avaliação guardada para as próximas pesquisas.';
+  else if (name === 'shop_proposal') reply = `${data.name} · ${data.source}\n\n${data.proposal}`;
+  else reply = shops.length ? shops.map(s => `${s.name} · ${s.sector} (${s.id})`).join('\n') + '\nA pesquisa não contactou estas lojas.' : 'Não encontrei lojas para esse filtro.';
+  return { safe: `${name}: ${r.status}; IDs: ${ids.join(', ') || '—'}.`, reply };
+}
+
+function directoryReply(name, r) {
+  const { safe, reply } = directoryResult(name, r);
+  S.memory.push({ role: 'assistant', content: safe });
   trim();
-  if (r.status === 'waiting_approval') return 'A consulta requer aprovação. Confirmas?';
-  if (r.status !== 'completed') return r.error || 'Não foi possível concluir.';
-  if (name === 'rate_shop') return 'Avaliação guardada para as próximas pesquisas.';
-  if (name === 'shop_proposal') return `${data.name} · ${data.source}\n\n${data.proposal}`;
-  return shops.length ? shops.map(s => `${s.name} · ${s.sector} (${s.id})`).join('\n') + '\nNenhuma mensagem enviada.' : 'Não encontrei lojas para esse filtro.';
+  return reply;
 }
 
 async function runInner(text) {
@@ -134,19 +141,16 @@ async function runInner(text) {
     }
   }
   S.memory.push({ role: 'user', content: text });
+  const ownerResults = [];
+  const replyWith = text => [...ownerResults, text].filter(Boolean).join('\n\n');
   for (let i = 0; i < 8; i++) {
     const msg = await callModel([{ role: 'system', content: SYSTEM() }, ...S.memory]);
     const calls = msg.tool_calls || [];
-    const lookup = calls.find(c => directoryTools.has(c.function.name));
-    if (lookup) {
-      const args = JSON.parse(lookup.function.arguments || '{}');
-      return directoryReply(lookup.function.name, await execute(lookup.function.name, args, text));
-    }
     S.memory.push({ role: 'assistant', content: msg.content || '', ...(calls.length ? { tool_calls: calls } : {}) });
     if (!calls.length) {
       trim();
       save();
-      return require('../sales/quality').toWhatsApp(msg.content || '✅');
+      return replyWith(require('../sales/quality').toWhatsApp(msg.content || '✅'));
     }
     for (const c of calls) {
       let args = {};
@@ -154,13 +158,23 @@ async function runInner(text) {
         args = JSON.parse(c.function.arguments || '{}');
       } catch {}
       const r = await execute(c.function.name, args, text);
-      S.memory.push({ role: 'tool', tool_call_id: c.id, content: JSON.stringify(r).slice(0, 3000) });
+      let content;
+      if (directoryTools.has(c.function.name)) {
+        const result = directoryResult(c.function.name, r);
+        ownerResults.push(result.reply);
+        content = result.safe;
+      } else content = JSON.stringify(r).slice(0, 3000);
+      S.memory.push({ role: 'tool', tool_call_id: c.id, content });
+    }
+    if (calls.every(c => directoryTools.has(c.function.name))) {
+      trim();
+      return replyWith('');
     }
     save();
   }
   trim();
   save();
-  return 'Executei vários passos mas não terminei — diz-me se queres que continue.';
+  return replyWith('Executei vários passos mas não terminei — diz-me se queres que continue.');
 }
 
 function summarize(r) {

@@ -9,10 +9,11 @@ const path = require('path');
 
 // WhatsApp simulado: regista mensagens "enviadas"
 const sent = [];
+let paused = false;
 const waPath = path.join(__dirname, '..', 'src', 'whatsapp.js');
 require.cache[waPath] = { id: waPath, filename: waPath, loaded: true, exports: {
   send: async (jid, text) => (sent.push({ jid, text }), { key: { id: 'MSG' + sent.length } }),
-  status: () => ({ paused: false }), setPaused: async () => {}, log: () => {},
+  status: () => ({ paused }), setPaused: async value => { paused = value; }, log: () => {},
 } };
 const profiles = require('../src/sales/profiles');
 const core = require('../src/agent/core');
@@ -97,4 +98,24 @@ test('mensagem logística não é confundida com o rascunho da campanha', async 
   const proposal = require('../src/sales/prospecting').proposal('node-910').proposal;
   assert.equal((await core.execute('send_message',{num:recipient,text:'A recolha é na rua do Roque Santeiro.'},'envia')).status,'completed');
   assert.equal((await core.execute('send_message',{num:recipient,text:proposal},'envia')).status,'failed');
+});
+test('uma ordem mista executa todas as ferramentas sem expor fichas ao modelo', async () => {
+  const api = require('../src/brain').groq.chat.completions;
+  const original = api.create;
+  const contexts = [];
+  api.create = async ({messages}) => {
+    contexts.push(JSON.stringify(messages));
+    return { choices: [{ message: contexts.length === 1 ? { tool_calls: [
+      { id:'listar', type:'function', function:{name:'list_shops',arguments:'{}'} },
+      { id:'pausar', type:'function', function:{name:'set_bot_paused',arguments:'{"paused":true}'} }
+    ] } : {content:'Bot pausado.'} }] };
+  };
+  try {
+    const reply = await core.run('Lista as lojas e pausa o bot');
+    assert.equal(paused,true);
+    assert.match(reply,/Etiqueta externa de teste/);
+    assert.match(reply,/Bot pausado/);
+    assert.match(contexts[1],/node-910/);
+    assert.doesNotMatch(contexts.join(''),/Etiqueta externa de teste/);
+  } finally { api.create = original; paused = false; }
 });
