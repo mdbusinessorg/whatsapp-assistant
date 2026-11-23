@@ -4,6 +4,7 @@ const st = require('../state');
 const permissions = require('./permissions');
 
 const sales = () => require('../sales');
+const prospecting = () => require('../sales/prospecting');
 const wa = () => require('../whatsapp');
 const num = (n) => String(n || '').replace(/\D/g, '');
 const jidOf = (n) => `${num(n)}@s.whatsapp.net`;
@@ -24,6 +25,11 @@ const T = {};
 function tool(name, description, props, required, run) {
   T[name] = { name, description, parameters: { type: 'object', properties: props, required }, run };
 }
+
+tool('discover_shops', 'Descobre até três novas lojas reais em Angola para o Roque Santeiro, sem enviar mensagens. Sem sector = todas. Aceita grupo em português ou tag shop do OpenStreetMap.', { sector: { type: 'string' } }, [], a => prospecting().discover(a.sector));
+tool('list_shops', 'Procura lojas já prospectadas pelo nome, ramo ou ID.', { query: { type: 'string' } }, [], a => prospecting().list(a.query));
+tool('shop_proposal', 'Consulta o rascunho, ramo e fonte de uma loja já prospectada. NÃO envia.', { id: { type: 'string' } }, ['id'], a => prospecting().proposal(a.id));
+tool('rate_shop', 'Regista a avaliação do dono para melhorar a ordem de futuras pesquisas. Não infere interesse da loja.', { id: { type: 'string' }, value: { type: 'string', enum: ['relevant','dismiss','neutral'] } }, ['id','value'], a => prospecting().feedback(a.id, a.value));
 
 tool('search_leads', 'Procura clientes/leads no CRM por texto livre (nome, número, produto, necessidade, objeção) e filtros.', {
   query: { type: 'string' }, category: { type: 'string', enum: ['cold', 'developing', 'qualified', 'hot', 'ready'] }, status: { type: 'string', enum: ['open', 'won', 'lost'] },
@@ -66,6 +72,7 @@ tool('list_pending', 'Clientes pendentes: interessados que não responderam à �
 });
 
 async function sendTo(n, text) {
+  if (num(n) !== config.ownerNumber && /roque[\s-]+santeiro/i.test(text)) throw new Error('A proposta da campanha só é enviada em resposta ao pedido da loja no próprio WhatsApp.');
   const jid = jidOf(n);
   const res = await wa().send(jid, text);
   st.pushHistory(jid, 'assistant', text);

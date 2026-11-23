@@ -8,7 +8,7 @@
     "start": "node src/index.js",
     "start:multi": "node src/multi.js",
     "dev": "node --watch src/index.js",
-    "test": "node --test test/signals.test.js test/engine.test.js test/followup.test.js test/agent.test.js",
+    "test": "node --test test/signals.test.js test/engine.test.js test/followup.test.js test/agent.test.js test/prospecting.test.js",
     "sim": "node test/sim.js"
   },
   "engines": {
@@ -17,6 +17,7 @@
   "dependencies": {
     "@whiskeysockets/baileys": "6.7.24",
     "express": "4.21.2",
+    "fflate": "0.8.2",
     "groq-sdk": "1.6.0",
     "msedge-tts": "^2.1.1",
     "pino": "9.5.0",

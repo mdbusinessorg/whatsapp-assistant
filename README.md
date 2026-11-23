@@ -91,6 +91,14 @@ O serviço faz ping a si próprio (`RENDER_EXTERNAL_URL`/`KEEPALIVE_URL`) a cada
 
 ## Alojamento grátis: GitHub Actions + painel no GitHub Pages
 
+### Prospecção Roque Santeiro
+
+No CRM, **Leads → Prospectar lojas** abre a ferramenta do Chat. A pesquisa manual devolve até três lojas novas em Angola, com fonte e rascunho, de todos os ramos por defeito. Os filtros incluem grupos em português e categorias `shop` da fonte; «Boa escolha» / «Descartar» ajustam a ordem das pesquisas seguintes sem inferir interesse dos clientes. Também funciona por ordem do dono: “Pesquisa lojas de moda” ou “Mostra a proposta da última loja”.
+
+O directório provém do [extracto HOT/HDX de Angola](https://data.humdata.org/dataset/hotosm_ago_points_of_interest), © [OpenStreetMap contributors, ODbL](https://www.openstreetmap.org/copyright). É uma fonte comunitária, não uma lista de clientes nem prova de que uma loja continua aberta. O worker lê o extracto no máximo uma vez por dia em funcionamento normal e não recolhe números de telefone. A selecção, a avaliação do dono e o estado de pedidos ficam no `DATA_DIR`, separados dos leads de vendas.
+
+Uma pesquisa nunca dispara mensagens. A ligação de pedido abre o WhatsApp da MD Business com `Quero a proposta Roque Santeiro <id>`; é a própria loja que tem de enviar esse texto. O bot devolve o rascunho apenas nesse chat privado, sem follow-up automático deste pedido, e não repete um envio com resultado incerto. O contador indica mensagens aceites pelo WhatsApp, não confirma leitura nem a identidade comercial do remetente.
+
 - `.github/workflows/worker.yml` corre `src/multi.js` (pessoal + business) em turnos de ~6h; cada turno agenda o seguinte (concorrência `wa-worker`) e um cron de 20 min serve de watchdog. Repo público = minutos ilimitados.
 - Secrets do repo: `GROQ_API_KEY`, `WEB_TOKEN`, `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, `BUSINESS_OWNER_NUMBER`.
 - `src/remote.js` publica estado/QR/log em `wa_panel` e executa comandos (`toggle`, `context`, `send`) de `wa_cmds`.
