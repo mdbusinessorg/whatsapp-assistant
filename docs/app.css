@@ -11,10 +11,13 @@ body:after{width:360px;height:420px;left:58%;bottom:-200px;background:radial-gra
 .logo{display:flex;align-items:center;gap:8px;padding:0 12px;font-weight:600;font-size:14px}
 .logo b{font-size:26px;font-weight:900;letter-spacing:-2px}
 .nav{display:flex;flex-direction:column;gap:6px}
-.nav a{display:flex;align-items:center;gap:12px;padding:11px 12px;border-radius:99px;font-size:12.5px;color:var(--ink);text-decoration:none;cursor:pointer;transition:.2s}
-.nav a svg{width:18px;height:18px;flex:none}
-.nav a:hover{background:#efeff0}
-.nav a.on{background:var(--ink);color:#fff;font-weight:600}
+.nav button{display:flex;align-items:center;gap:12px;padding:11px 12px;border:0;border-radius:99px;background:transparent;font:inherit;font-size:12.5px;color:var(--ink);cursor:pointer}
+.nav button svg{width:18px;height:18px;flex:none}
+.nav button:hover{background:#efeff0}
+.nav button[aria-current],.nav button.on{background:var(--ink);color:#fff;font-weight:600}
+.nav button:focus-visible{outline:2px solid #315bb5;outline-offset:-2px}
+#nav-more{display:none}
+#nav-extra{display:contents}
 .me{margin-top:auto;text-align:center;font-size:12px}
 .avatar{width:58px;height:58px;border-radius:50%;margin:0 auto 10px;background:radial-gradient(circle at 30% 30%,#555,#000);color:#fff;display:grid;place-items:center;font-weight:700;letter-spacing:-.5px;box-shadow:0 6px 18px rgba(0,0,0,.25)}
 main{min-width:0}
@@ -117,13 +120,21 @@ h1{font-size:clamp(28px,2.6vw,40px);margin-bottom:clamp(8px,1vh,18px)}
   .teamwrap{grid-column:1/-1}
 }
 @media(max-width:850px){
-  .shell{grid-template-columns:minmax(0,1fr);margin-bottom:calc(84px + env(safe-area-inset-bottom))}
-  .side{position:fixed;top:auto;left:6px;right:6px;bottom:env(safe-area-inset-bottom,0px);z-index:8;padding:4px;border-radius:20px;background:#fff;box-shadow:0 0 20px #0002}
+  .shell{grid-template-columns:minmax(0,1fr);width:100%;margin:0;padding:0 0 var(--gap);border:0;border-radius:0}
+  main{padding:0 var(--gap)}
+  .side{top:0;z-index:8;max-height:none;overflow:visible;padding:calc(4px + env(safe-area-inset-top)) var(--gap) 4px;border-radius:0;background:#fff;border-bottom:1px solid var(--line)}
   .side .logo,.me{display:none}
-  .nav{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:0}
-  .nav a{flex-direction:column;justify-content:center;text-align:center;gap:3px;padding:5px 1px;min-height:44px;font-size:clamp(9px,2.5vw,12px);border-radius:16px}
+  .nav{position:relative;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:2px}
+  .nav>button{flex-direction:column;justify-content:center;gap:3px;padding:5px 1px;min-height:48px;font-size:.75rem;border-radius:12px}
   .nav span{max-width:100%;overflow-wrap:anywhere}
-  .toast{bottom:calc(65px + env(safe-area-inset-bottom))}
+  #nav-more{display:flex}
+  #nav-extra{display:none;position:absolute;right:0;top:calc(100% + 6px);width:min(16rem,100%);max-height:60dvh;overflow:auto;padding:6px;border:1px solid var(--line);border-radius:16px;background:#fff;box-shadow:0 8px 24px #0002}
+  #nav-more[aria-expanded="true"]+#nav-extra{display:grid}
+  #nav-extra button{min-height:44px;font-size:.9rem}
+  .top{display:grid;grid-template-columns:auto minmax(0,1fr);gap:8px}
+  .top .clock,.top>#bell,.top>#mail{display:none}
+  .top .search{order:0;max-width:none}
+  .toast{bottom:calc(12px + env(safe-area-inset-bottom))}
 }
 @media(max-width:660px){
   .grid{grid-template-columns:minmax(0,1fr)}

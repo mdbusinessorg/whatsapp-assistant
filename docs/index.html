@@ -17,14 +17,14 @@
 <div id="app" class="shell" hidden>
   <aside class="side">
     <div class="logo"><b>MD</b> Business</div>
-    <nav class="nav" id="nav"></nav>
+    <nav class="nav" id="nav" aria-label="Navegação do CRM"></nav>
     <div class="me"><div class="avatar">MD</div>MD Business<div class="muted small" id="me-num"></div></div>
   </aside>
   <main>
     <div class="top">
       <div class="pill"><span class="circ" id="wa-ic"></span><span id="wa-txt">WhatsApp</span></div>
       <div class="pill clock"><div id="clk"></div><div><b>Luanda</b><br><span class="muted">WAT</span></div></div>
-      <div class="pill search"><span class="circ" id="s-ic"></span><input id="q" placeholder="Procurar leads…" oninput="go('leads')"></div>
+      <div class="pill search"><span class="circ" id="s-ic"></span><input id="q" type="search" aria-label="Procurar leads" placeholder="Procurar leads…" oninput="go('leads')"></div>
       <button class="circ" title="Pendentes" onclick="go('follow')" id="bell"></button>
       <button class="circ light" title="Leads quentes" onclick="go('leads','hot')" id="mail"></button>
     </div>
