@@ -84,10 +84,10 @@ async function poll() {
 
 ${reply}`).catch(() => {});
     } else if (c.cmd === 'send') {
-      const { to, text, template } = JSON.parse(c.arg || '{}');
+      const { to, text, template, jid } = JSON.parse(c.arg || '{}');
       const num = String(to || '').replace(/\D/g, '');
       if (config.mode === 'business') {
-        const r = await require('./agent/core').execute('send_message', { num, text, template }, 'Mensagem de serviço pelo CRM');
+        const r = await require('./agent/core').execute('send_message', { num, text, template, jid }, 'Mensagem de serviço pelo CRM');
         wa.log(`Modelo de serviço: ${r.status}${r.error ? ' — ' + r.error : ''}`);
       } else if (num && text) {
         await wa.send(`${num}@s.whatsapp.net`, String(text).slice(0, 4000));

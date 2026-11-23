@@ -177,3 +177,15 @@ test('recusa num perfil LID antigo também impede envios ao perfil de telefone',
   }
   assert.equal(sent.length,before);
 });
+test('um filtro não pode redireccionar o envio a outro cliente com o mesmo número no CRM', async () => {
+  const num='244900066611';
+  lead('244900066600@s.whatsapp.net',{num,name:'FiltroUnico',lastCustomerAt:11,lastBotAt:12});
+  lead(`${num}@s.whatsapp.net`,{num,name:'Outro',lastCustomerAt:11});
+  const before=sent.length;
+  for (const tool of ['broadcast','reply_pending']) {
+    const r = await core.execute(tool,{query:'FiltroUnico',template:'entrega'},'envia',true);
+    assert.equal(r.result.sent,0);
+    assert.equal(r.result.results.length,1);
+  }
+  assert.equal(sent.length,before);
+});

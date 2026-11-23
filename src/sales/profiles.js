@@ -54,9 +54,10 @@ const chatNumber = p => {
   const m = /^(\d+)(?::\d+)?@(s\.whatsapp\.net|lid)$/.exec(p.jid);
   return m && (m[2] === 'lid' ? p.inboundNum : m[1]);
 };
-const inboundByNum = num => {
+const inboundByNum = (num, jid) => {
   const n = String(num || '').replace(/\D/g, '');
-  return n && all().find(p => p.num === n && p.lastCustomerAt && chatNumber(p) === n);
+  const candidates = jid == null ? all() : [leads[jid]];
+  return n && candidates.find(p => p && p.num === n && p.lastCustomerAt && chatNumber(p) === n);
 };
 const contactBlocked = (num, jid) => {
   const n = String(num || '').replace(/\D/g, '');

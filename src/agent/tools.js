@@ -75,7 +75,7 @@ tool('list_pending', 'Clientes pendentes: interessados que não responderam à �
 
 tool('send_message', 'Envia exclusivamente um modelo fixo de serviço no chat de um cliente existente; nunca envia propostas comerciais.', { num: { type: 'string' }, template: templateParam }, ['num', 'template'], async (a) => {
   if (a.text != null) throw new Error('Texto livre não é permitido.');
-  return service.send(a.num, a.template);
+  return service.send(a.num, a.template, a.jid);
 });
 
 tool('reply_pending', 'Responde a clientes pendentes com o modelo de acompanhamento. Pode filtrar por texto (ex.: produto).', {
@@ -87,7 +87,7 @@ tool('reply_pending', 'Responde a clientes pendentes com o modelo de acompanhame
   const results = [];
   for (const p of rows.sort((x, y) => y.score - x.score).slice(0, max)) {
     try {
-      const r = await service.send(p.num, 'acompanhamento');
+      const r = await service.send(p.num, 'acompanhamento', p.jid);
       results.push({ ...r, name: p.name });
     } catch (e) {
       results.push({ to: p.num, verified: false, error: e.message });
@@ -104,7 +104,7 @@ tool('assign_lead', 'O agente assume a gestão de um cliente para fechar a venda
   p.managed = { goal: a.goal || 'concluir a venda', at: Date.now() };
   sales().profiles.save();
   let sent = null;
-  if (a.send_now && !p.optOut && !p.declined) sent = await service.send(p.num, 'atendimento');
+  if (a.send_now && !p.optOut && !p.declined) sent = await service.send(p.num, 'atendimento', p.jid);
   return { verified: sales().profiles.findByNum(p.num)?.managed?.goal === p.managed.goal, lead: brief(p), maxDiscountPct: p.override.maxDiscountPct, sent };
 });
 T.assign_lead.checkLimits = (a) => {
@@ -150,7 +150,7 @@ tool('broadcast', 'Envia o mesmo modelo fixo de serviço aos clientes filtrados,
   service.textFor(a.template);
   const rows = sales().profiles.all().filter((l) => !l.optOut && !l.declined && match(l, a.query)).slice(0, Math.min(a.limit || 20, permissions.limits().maxMessagesPerRun || 20));
   const results = [];
-  for (const p of rows) results.push(await service.send(p.num, a.template).catch((e) => ({ to: p.num, verified: false, error: e.message })));
+  for (const p of rows) results.push(await service.send(p.num, a.template, p.jid).catch((e) => ({ to: p.num, verified: false, error: e.message })));
   return { sent: results.filter((r) => r.verified).length, verified: results.every(r => r.verified), results };
 });
 

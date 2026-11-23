@@ -57,7 +57,7 @@ function renderWa() {
   $('msg').value = selected;
   if (keep != null) $('ctx').dataset.dirty = 1;
 }
-function sendTo(to, template) { if (!to || !template) return toast('Indica o cliente e escolhe um modelo'); cmd('send', JSON.stringify({ to, template })); }
+function sendTo(to, template, jid) { if (!to || !template) return toast('Indica o cliente e escolhe um modelo'); cmd('send', JSON.stringify({ to, template, jid })); }
 function openLead(jid) {
   const l = S().leads.find((x) => x.jid === jid); if (!l) return;
   const facts = Object.entries(l.facts || {}).filter(([, v]) => v);
@@ -69,7 +69,8 @@ function openLead(jid) {
   ${l.objections?.length ? `<p class="small"><b>Objeções por resolver:</b> ${l.objections.map((o) => OBJ[o] || o).join(', ')}</p>` : ''}
   <p class="small muted">${l.messages} mensagens · ${l.followUps} follow-ups · última mensagem há ${ago(l.lastCustomerAt)}${l.optOut ? ' · pediu para não ser contactado' : ''}</p>
   <p class="row" style="flex-wrap:wrap"><button class="btn" onclick="outcome('${l.num}','won')">✓ Vendido</button><button class="btn l" onclick="outcome('${l.num}','lost')">Perdido</button><button class="btn l" onclick="outcome('${l.num}','open')">Reabrir</button><a class="btn l" style="text-decoration:none" target="_blank" href="https://wa.me/${esc(l.num)}">Abrir no WhatsApp</a></p>
-  <p>${templateSelect('lmsg')}</p><button class="btn" onclick="sendTo('${l.num}',$('lmsg').value)">Enviar modelo de serviço</button>`;
+  <p>${templateSelect('lmsg')}</p><button class="btn" id="lead-send">Enviar modelo de serviço</button>`;
+  $('lead-send').onclick = () => sendTo(l.num, $('lmsg').value, l.jid);
   $('modal').classList.add('on');
 }
 function closeLead() { $('modal').classList.remove('on'); }

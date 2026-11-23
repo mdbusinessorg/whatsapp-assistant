@@ -10,9 +10,9 @@ function textFor(template) {
   if (typeof template !== 'string' || !Object.hasOwn(templates, template)) throw new Error('Escolhe um modelo de serviço válido. Texto livre não é permitido.');
   return templates[template];
 }
-async function send(num, template) {
+async function send(num, template, jid) {
   const text = textFor(template);
-  const p = profiles.inboundByNum(num);
+  const p = profiles.inboundByNum(num, jid);
   if (!p) throw new Error('O número indicado ainda não iniciou uma conversa privada confirmada.');
   if (profiles.contactBlocked(num, p.jid)) throw new Error('O cliente pediu para não ser contactado.');
   const res = await require('../whatsapp').send(p.jid, text);
