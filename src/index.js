@@ -1,8 +1,11 @@
-const wa = require('./whatsapp');
-const web = require('./web');
+const sync = require('./sync');
 
 async function main() {
+  await sync.restore();
+  const wa = require('./whatsapp');
+  const web = require('./web');
   web.start();
+  sync.start();
   await wa.connect();
 }
 

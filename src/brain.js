@@ -14,9 +14,15 @@ function buildSystem() {
   try {
     ctx = fs.readFileSync(CONTEXT_FILE, 'utf8').trim();
   } catch {}
-  const extra = ctx ? `\n\nContexto sobre o Joel (CV/notas):\n${ctx.slice(0, 8000)}` : '';
+  if (!ctx && config.defaultContextFile) {
+    try {
+      ctx = fs.readFileSync(config.defaultContextFile, 'utf8').trim();
+    } catch {}
+  }
+  const label = config.mode === 'business' ? `Informação da ${config.businessName} (serviços, preços, FAQ)` : `Contexto sobre o ${config.ownerName} (CV/notas)`;
+  const extra = ctx ? `\n\n${label}:\n${ctx.slice(0, 8000)}` : '';
   const note = state.ownerNote
-    ? `\n\nNota atual do Joel (${new Date(state.ownerNoteAt).toLocaleString('pt-PT')}): ${state.ownerNote}\nUsa esta nota para dizer onde ele está / quando volta, mas resume — não copies à letra se tiver dados privados.`
+    ? `\n\nNota atual do ${config.ownerName} (${new Date(state.ownerNoteAt).toLocaleString('pt-PT')}): ${state.ownerNote}\nUsa esta nota para dizer onde ele está / quando volta, mas resume — não copies à letra se tiver dados privados.`
     : '';
   return config.systemPrompt + extra + note;
 }

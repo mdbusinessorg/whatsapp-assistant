@@ -1,7 +1,8 @@
 const { state, saveState, addReminder, reminders, removeReminder, clearHistory, contactsSince } = require('./state');
 const brain = require('./brain');
+const config = require('./config');
 
-const HELP = `*Mega Assistente* 🤖 — comandos:
+const HELP = `*${config.title}* 🤖 — comandos:
 
 *!ajuda* — esta mensagem
 *!limpar* — apagar a memória desta conversa
@@ -108,7 +109,7 @@ async function handle(text, ctx) {
         .map((c) => `+${c.num}${c.name ? ` (${c.name})` : ''}: ${c.text.slice(0, 120)}${c.urgent ? ' [URGENTE]' : ''}`)
         .join('\n');
       const summary = await brain
-        .ask(`Resume em bullets quem procurou o Joel hoje e o que cada um queria. Sê direto.\n\n${lines}`)
+        .ask(`Resume em bullets quem ${config.mode === 'business' ? `contactou a ${config.businessName}` : `procurou o ${config.ownerName}`} hoje e o que cada um queria. Sê direto.\n\n${lines}`)
         .catch(() => null);
       return `📋 *Resumo de hoje*\n\n${summary || lines}`;
     }

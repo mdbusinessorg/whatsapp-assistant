@@ -55,6 +55,28 @@ function jidNum(jid) {
   return jid.split('@')[0].replace(/:\d+$/, '');
 }
 
+// Modo business: pedido de orçamento/contratação ou de falar com uma pessoa → avisa o dono
+const LEAD_RE = /or[çc]amento|pre[çc]o|quanto custa|valor|contratar|proposta|reuni[ãa]o|encomendar|quero (um|uma|fazer|criar)|falar com (algu[ée]m|uma pessoa|o respons[áa]vel|humano)/i;
+function wantsHumanOrQuote(text) {
+  return LEAD_RE.test(text);
+}
+
+async function notifyLead(jid, num, name, text) {
+  const last = state.leadsNotified[jid] || 0;
+  if (Date.now() - last < 6 * 3600000) return;
+  state.leadsNotified[jid] = Date.now();
+  saveState();
+  const convo = getHistory(jid)
+    .filter((h) => h.role !== 'system')
+    .slice(-6)
+    .map((h) => `${h.role === 'user' ? '👤' : '🤖'} ${h.content.slice(0, 200)}`)
+    .join('\n');
+  await send(
+    `${config.ownerNumber}@s.whatsapp.net`,
+    `💼 *Novo cliente — ${config.businessName}*\n+${num}${name ? ` (${name})` : ''}\n"${text.slice(0, 300)}"\n\n${convo}\n\nwa.me/${num}`
+  ).catch((e) => log(`aviso de lead falhou: ${e.message}`));
+}
+
 async function handleIncoming(msg) {
   const jid = msg.key.remoteJid;
   if (!jid || jid === 'status@broadcast' || jid.endsWith('@newsletter')) return;
@@ -88,7 +110,9 @@ async function handleIncoming(msg) {
   if (owner && !isGroup && text) {
     for (const [pjid, ts] of Object.entries(state.pendingUrgent)) {
       if (Date.now() - ts < 30 * 60000) {
-        await send(pjid, `✅ O teu assunto é importante — o Joel está disponível. Fala com ele diretamente: +244 ${config.ownerNumber.slice(3)}`).catch(() => {});
+        await send(pjid, config.mode === 'business'
+            ? '✅ Um responsável da equipa já está a tratar do teu pedido e entra em contacto contigo em breve.'
+            : `✅ O teu assunto é importante — o ${config.ownerName} está disponível. Fala com ele diretamente: +244 ${config.ownerNumber.slice(3)}`).catch(() => {});
       }
       delete state.pendingUrgent[pjid];
     }
@@ -125,9 +149,15 @@ async function handleIncoming(msg) {
       });
     }
 
-    // Primeira interação neste chat: o modelo deve apresentar-se como assistente do Joel
+    // Primeira interação neste chat: o modelo deve apresentar-se
     if (!state.introduced[jid]) {
-      pushHistory(jid, 'system', 'Esta é a primeira mensagem desta pessoa neste chat. Apresenta-te como o assistente do Joel (ele está ausente) antes de responder.');
+      pushHistory(
+        jid,
+        'system',
+        config.mode === 'business'
+          ? `Esta é a primeira mensagem desta pessoa neste chat. Dá-lhe as boas-vindas à ${config.businessName} e apresenta-te como o assistente virtual antes de responder.`
+          : `Esta é a primeira mensagem desta pessoa neste chat. Apresenta-te como o assistente do ${config.ownerName} (ele está ausente) antes de responder.`
+      );
       state.introduced[jid] = true;
       saveState();
     }
@@ -142,7 +172,14 @@ async function handleIncoming(msg) {
         `${config.ownerNumber}@s.whatsapp.net`,
         `🚨 Mensagem URGENTE de +${jidNum(jid)}:\n"${userText.slice(0, 300)}"\n\nResponde aqui (qualquer texto) e eu dou-lhe o teu contacto principal.`
       ).catch((e) => log(`aviso urgente falhou: ${e.message}`));
-      await send(jid, '⚡ Percebi que é urgente — já avisei o Joel no número principal dele.');
+      await send(
+        jid,
+        config.mode === 'business'
+          ? '⚡ Percebi que é urgente — já avisei a equipa.'
+          : `⚡ Percebi que é urgente — já avisei o ${config.ownerName} no número principal dele.`
+      );
+    } else if (config.mode === 'business' && !isGroup && !owner && config.ownerNumber && wantsHumanOrQuote(userText)) {
+      await notifyLead(jid, senderNum, msg.pushName, userText);
     }
 
     const reply = await brain.chat(getHistory(jid));
@@ -168,7 +205,7 @@ async function connect() {
     auth: authState,
     logger,
     printQRInTerminal: false,
-    browser: ['Mega Assistente', 'Chrome', '1.0'],
+    browser: [config.title, 'Chrome', '1.0'],
     markOnlineOnConnect: false,
   });
 
@@ -238,7 +275,7 @@ setInterval(async () => {
     .map((c) => `+${c.num}${c.name ? ` (${c.name})` : ''}: ${c.text.slice(0, 120)}${c.urgent ? ' [URGENTE]' : ''}`)
     .join('\n');
   const summary = await brain
-    .ask(`Resume em bullets quem procurou o Joel hoje e o que cada um queria. Sê direto.\n\n${lines}`)
+    .ask(`Resume em bullets quem ${config.mode === 'business' ? `contactou a ${config.businessName}` : `procurou o ${config.ownerName}`} hoje e o que cada um queria. Sê direto.\n\n${lines}`)
     .catch(() => lines);
   await send(`${config.ownerNumber}@s.whatsapp.net`, `📋 *Resumo do dia*\n\n${summary}`).catch(() => {});
 }, 60000);
