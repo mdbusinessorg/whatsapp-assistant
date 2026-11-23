@@ -218,3 +218,14 @@ test('novo pedido de compra supera a recusa comercial antiga, mas nunca um opt-o
   old.optOut=false; old.declinedAt=profile.renewedInterestAt+1;
   await assert.rejects(service.send(n,'entrega'),/não ser contactado/);
 });
+test('perguntas de apoio e análise indisponível não anulam a recusa', async t => {
+  const n='244900079991', jid=n+'@s.whatsapp.net', text='Quando fica pronto?';
+  lead('990079991@lid',{num:n,declined:true,lastCustomerAt:1});
+  const analyse=t.mock.method(require('../src/sales/analyzer'),'analyze',async () => ({intent:'support'}));
+  t.mock.method(require('../src/brain'),'complete',async () => 'Vou confirmar o estado do pedido.');
+  for (const unavailable of [false,true]) {
+    if (unavailable) analyse.mock.mockImplementation(async () => {throw Error('indisponível')});
+    await require('../src/sales').respond({jid,num:n,text,history:[{role:'user',content:text}]});
+    assert.ok(profiles.contactBlocked(n,jid));
+  }
+});

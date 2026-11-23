@@ -51,7 +51,7 @@ function merge(p, a, det, text) {
   if (det.optOut || a.declined || a.intent === 'decline') {
     p.declined = true;
     p.declinedAt = p.lastCustomerAt;
-  } else if (det.buyingSignals || a.intent === 'purchase' || a.intent === 'quote') {
+  } else if (!a.error && (a.intent === 'purchase' || a.intent === 'quote')) {
     p.declined = false;
     p.renewedInterestAt = p.lastCustomerAt;
   }
