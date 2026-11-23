@@ -1,3 +1,4 @@
+select.in{max-width:100%;min-width:0;width:100%}
 *{box-sizing:border-box}
 :root{--bg:#e7e7e8;--glass:rgba(255,255,255,.55);--card:rgba(255,255,255,.82);--ink:#0b0b0c;--muted:#8a8a90;--line:#d9d9dc;--r:28px}
 [hidden]{display:none!important}

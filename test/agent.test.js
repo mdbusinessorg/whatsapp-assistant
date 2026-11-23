@@ -20,8 +20,8 @@ const core = require('../src/agent/core');
 const permissions = require('../src/agent/permissions');
 
 const lead = (jid, o) => Object.assign(profiles.get(jid), o);
-lead('a@s.whatsapp.net', { num: '244911111111', name: 'Ana', score: 70, category: 'hot', lastCustomerAt: Date.now() - 30 * 3600e3, lastBotAt: Date.now() - 29 * 3600e3, products: ['Landing Page Comercial'] });
-lead('b@s.whatsapp.net', { num: '244922222222', name: 'Bruno', score: 20, category: 'developing', optOut: true, lastCustomerAt: Date.now() - 50 * 3600e3, lastBotAt: Date.now() - 49 * 3600e3 });
+lead('244911111111@s.whatsapp.net', { num: '244911111111', name: 'Ana', score: 70, category: 'hot', lastCustomerAt: Date.now() - 30 * 3600e3, lastBotAt: Date.now() - 29 * 3600e3, products: ['Landing Page Comercial'] });
+lead('244922222222@s.whatsapp.net', { num: '244922222222', name: 'Bruno', score: 20, category: 'developing', optOut: true, lastCustomerAt: Date.now() - 50 * 3600e3, lastBotAt: Date.now() - 49 * 3600e3 });
 profiles.save();
 
 test('permissões configuráveis', () => {
@@ -38,13 +38,13 @@ test('ferramentas autónomas executam e verificam', async () => {
   const u = await core.execute('update_lead', { num: '244911111111', priority: true, note: 'cliente VIP' }, 'marca prioritário');
   assert.strictEqual(u.status, 'completed');
   assert.ok(profiles.findByNum('244911111111').priority);
-  const m = await core.execute('send_message', { num: '244911111111', text: 'Olá Ana' }, 'envia');
+  const m = await core.execute('send_message', { num: '244911111111', template: 'entrega' }, 'envia');
   assert.strictEqual(m.result.verified, true);
   assert.strictEqual(sent.at(-1).jid, '244911111111@s.whatsapp.net');
 });
 
 test('opt-out é respeitado pelas ferramentas', async () => {
-  const r = await core.execute('send_message', { num: '244922222222', text: 'promo' }, 'envia');
+  const r = await core.execute('send_message', { num: '244922222222', template: 'entrega' }, 'envia');
   assert.strictEqual(r.status, 'failed');
   assert.match(r.error, /não ser contactado/);
 });
@@ -93,11 +93,19 @@ test('o modelo privilegiado não recebe nomes, rascunhos nem resultados externos
     assert.doesNotMatch(contexts.join(''), /Etiqueta externa de teste/);
   } finally { api.create = original; }
 });
-test('mensagem logística não é confundida com o rascunho da campanha', async () => {
+test('só os modelos fixos passam em ordens de envio, mesmo com aprovação', async () => {
   const recipient = '244911111111';
-  const proposal = require('../src/sales/prospecting').proposal('node-910').proposal;
-  assert.equal((await core.execute('send_message',{num:recipient,text:'A recolha é na rua do Roque Santeiro.'},'envia')).status,'completed');
-  assert.equal((await core.execute('send_message',{num:recipient,text:proposal},'envia')).status,'failed');
+  const before = sent.length;
+  const args = { num:recipient, text:'Gostariam de pôr os vossos produtos na nossa plataforma?' };
+  for (const tool of ['send_message','broadcast']) {
+    for (const a of [args,{...args,template:'entrega'},{template:'constructor'}]) {
+      assert.equal((await core.execute(tool,a,'envia',true)).status,'failed');
+    }
+  }
+  assert.equal((await core.execute('send_message',{num:'244900088877',template:'entrega'},'envia')).status,'failed');
+  assert.equal(sent.length,before);
+  assert.equal((await core.execute('send_message',{num:recipient,template:'entrega'},'envia')).status,'completed');
+  assert.equal(sent.at(-1).text,require('../src/sales/service-messages').templates.entrega);
 });
 test('uma ordem mista executa todas as ferramentas sem expor fichas ao modelo', async () => {
   const api = require('../src/brain').groq.chat.completions;

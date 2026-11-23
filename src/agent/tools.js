@@ -2,6 +2,8 @@
 const config = require('../config');
 const st = require('../state');
 const permissions = require('./permissions');
+const service = require('../sales/service-messages');
+const templateParam = { type: 'string', enum: Object.keys(service.templates), description: JSON.stringify(service.templates) };
 
 const sales = () => require('../sales');
 const prospecting = () => require('../sales/prospecting');
@@ -71,27 +73,12 @@ tool('list_pending', 'Clientes pendentes: interessados que não responderam à �
   return { count: rows.length, leads: rows.sort((x, y) => y.score - x.score).slice(0, 30).map(brief) };
 });
 
-async function sendTo(n, text) {
-  if (num(n) !== config.ownerNumber && prospecting().containsDraft(text)) throw new Error('A proposta da campanha só é enviada em resposta ao pedido da loja no próprio WhatsApp.');
-  const jid = jidOf(n);
-  const res = await wa().send(jid, text);
-  st.pushHistory(jid, 'assistant', text);
-  st.saveHistories();
-  const p = sales().profiles.findByNum(n);
-  if (p) {
-    p.lastBotAt = Date.now();
-    sales().profiles.save();
-  }
-  return { to: num(n), verified: !!res?.key?.id, messageId: res?.key?.id || null };
-}
-
-tool('send_message', 'Envia uma mensagem de WhatsApp a um cliente (texto exacto, já redigido).', { num: { type: 'string' }, text: { type: 'string' } }, ['num', 'text'], async (a) => {
-  const p = sales().profiles.findByNum(a.num);
-  if (p?.optOut) throw new Error(`+${num(a.num)} pediu para não ser contactado.`);
-  return sendTo(a.num, a.text);
+tool('send_message', 'Envia exclusivamente um modelo fixo de serviço no chat de um cliente existente; nunca envia propostas comerciais.', { num: { type: 'string' }, template: templateParam }, ['num', 'template'], async (a) => {
+  if (a.text != null) throw new Error('Texto livre não é permitido.');
+  return service.send(a.num, a.template);
 });
 
-tool('reply_pending', 'Responde/recupera clientes pendentes com mensagens personalizadas geradas pelo motor de vendas (respeita opt-out e recusas). Pode filtrar por texto (ex.: produto).', {
+tool('reply_pending', 'Responde a clientes pendentes com o modelo de acompanhamento. Pode filtrar por texto (ex.: produto).', {
   query: { type: 'string' }, nums: { type: 'array', items: { type: 'string' } }, limit: { type: 'number' },
 }, [], async (a) => {
   const max = Math.min(a.limit || 10, permissions.limits().maxMessagesPerRun || 20);
@@ -100,16 +87,17 @@ tool('reply_pending', 'Responde/recupera clientes pendentes com mensagens person
   const results = [];
   for (const p of rows.sort((x, y) => y.score - x.score).slice(0, max)) {
     try {
-      const text = await sales().composeFollowUp(p, st.getHistory(p.jid));
-      const r = await sendTo(p.num, text);
-      p.followUps.push({ at: Date.now(), n: p.followUps.length + 1, manual: true });
-      sales().profiles.save();
-      results.push({ ...r, name: p.name, text });
+      const r = await service.send(p.num, 'acompanhamento');
+      if (r.verified) {
+        p.followUps.push({ at: Date.now(), n: p.followUps.length + 1, manual: true });
+        sales().profiles.save();
+      }
+      results.push({ ...r, name: p.name });
     } catch (e) {
       results.push({ to: p.num, verified: false, error: e.message });
     }
   }
-  return { attempted: results.length, sent: results.filter((r) => r.verified).length, results };
+  return { attempted: results.length, sent: results.filter((r) => r.verified).length, verified: results.every(r => r.verified), results };
 });
 
 tool('assign_lead', 'O agente assume a gestão de um cliente para fechar a venda, com limite de desconto autorizado (%). Opcionalmente envia já uma mensagem.', {
@@ -120,7 +108,7 @@ tool('assign_lead', 'O agente assume a gestão de um cliente para fechar a venda
   p.managed = { goal: a.goal || 'concluir a venda', at: Date.now() };
   sales().profiles.save();
   let sent = null;
-  if (a.send_now && !p.optOut) sent = await sendTo(p.num, await sales().composeFollowUp(p, st.getHistory(p.jid)));
+  if (a.send_now && !p.optOut && !p.declined) sent = await service.send(p.num, 'atendimento');
   return { verified: sales().profiles.findByNum(p.num)?.managed?.goal === p.managed.goal, lead: brief(p), maxDiscountPct: p.override.maxDiscountPct, sent };
 });
 T.assign_lead.checkLimits = (a) => {
@@ -137,7 +125,7 @@ tool('sales_report', 'Relatório de vendas (hoje/semana/tudo): leads, quentes, v
   const report = { period: a.period || 'today', activeLeads: active.length, newLeads: active.filter((l) => !span || Date.now() - l.createdAt < span).length, total: d.total, hot: d.hot, won: d.won, lost: d.lost, conversionRate: d.conversionRate, pending: d.pending.length, followUpsSent: d.followUpsSent, recovered: d.recovered, topObjections: d.topObjections, insights: d.insights, hotLeads: active.filter((l) => ['hot', 'ready'].includes(l.category)).map(brief).slice(0, 8) };
   if (a.send_to_owner) {
     const txt = `📊 *Relatório (${report.period})*\nLeads activos: ${report.activeLeads} (novos ${report.newLeads}) · Quentes: ${report.hot}\nVendidos: ${report.won} · Perdidos: ${report.lost} · Conversão: ${report.conversionRate}%\nPendentes: ${report.pending} · Follow-ups: ${report.followUpsSent} (${report.recovered} recuperados)` + (report.hotLeads.length ? `\n\n🔥 ${report.hotLeads.map((l) => `+${l.num}${l.name ? ` ${l.name}` : ''} (${l.score})`).join('\n🔥 ')}` : '');
-    report.sent = (await sendTo(config.ownerNumber, txt)).verified;
+    report.sent = !!(await wa().send(jidOf(config.ownerNumber), txt))?.key?.id;
   }
   return report;
 });
@@ -161,11 +149,13 @@ tool('delete_lead', 'Apaga definitivamente um cliente e a conversa (irreversíve
   return { verified: !sales().profiles.findByNum(a.num) };
 });
 
-tool('broadcast', 'Envia o MESMO texto a vários clientes que correspondem ao filtro (exclui quem pediu para não ser contactado).', { query: { type: 'string' }, text: { type: 'string' }, limit: { type: 'number' } }, ['text'], async (a) => {
+tool('broadcast', 'Envia o mesmo modelo fixo de serviço aos clientes filtrados, com aprovação. Não envia propostas.', { query: { type: 'string' }, template: templateParam, limit: { type: 'number' } }, ['template'], async (a) => {
+  if (a.text != null) throw new Error('Texto livre não é permitido.');
+  service.textFor(a.template);
   const rows = sales().profiles.all().filter((l) => !l.optOut && !l.declined && match(l, a.query)).slice(0, Math.min(a.limit || 20, permissions.limits().maxMessagesPerRun || 20));
   const results = [];
-  for (const p of rows) results.push(await sendTo(p.num, a.text).catch((e) => ({ to: p.num, verified: false, error: e.message })));
-  return { sent: results.filter((r) => r.verified).length, results };
+  for (const p of rows) results.push(await service.send(p.num, a.template).catch((e) => ({ to: p.num, verified: false, error: e.message })));
+  return { sent: results.filter((r) => r.verified).length, verified: results.every(r => r.verified), results };
 });
 
 module.exports = { T, schemas: () => Object.values(T).map((t) => ({ type: 'function', function: { name: t.name, description: t.description, parameters: t.parameters } })) };

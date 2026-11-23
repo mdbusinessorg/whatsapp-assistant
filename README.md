@@ -99,6 +99,8 @@ O directório provém do [extracto HOT/HDX de Angola](https://data.humdata.org/d
 
 Uma pesquisa nunca dispara mensagens. A ligação de pedido abre o WhatsApp da MD Business com `Quero a proposta Roque Santeiro <id>`; é a própria loja que tem de enviar esse texto. O bot devolve o rascunho apenas nesse chat privado, sem follow-up automático deste pedido, e não repete um envio com resultado incerto. O contador indica mensagens aceites pelo WhatsApp, não confirma leitura nem a identidade comercial do remetente.
 
+As ordens de envio do dono (incluindo envios em massa aprovados) e os envios pelo painel só aceitam modelos fixos de serviço: acompanhamento, confirmação de recepção de encomenda e preferência de atendimento. Só saem para o chat de origem de clientes que já escreveram e não recusaram contacto. A conversa normal iniciada pelo cliente continua livre.
+
 - `.github/workflows/worker.yml` corre `src/multi.js` (pessoal + business) em turnos de ~6h; cada turno agenda o seguinte (concorrência `wa-worker`) e um cron de 20 min serve de watchdog. Repo público = minutos ilimitados.
 - Secrets do repo: `GROQ_API_KEY`, `WEB_TOKEN`, `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, `BUSINESS_OWNER_NUMBER`.
 - `src/remote.js` publica estado/QR/log em `wa_panel` e executa comandos (`toggle`, `context`, `send`) de `wa_cmds`.

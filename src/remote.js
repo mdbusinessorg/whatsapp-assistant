@@ -51,6 +51,7 @@ async function publish() {
     logs: s.logs.slice(-80),
     sales: config.mode === 'business' ? require('./sales').dashboard() : null,
     agent: config.mode === 'business' ? { ...require('./agent/core').status(), lastReply } : null,
+    serviceTemplates: config.mode === 'business' ? require('./sales/service-messages').templates : null,
   };
   const json = JSON.stringify(data);
   if (json === lastJson && Date.now() - lastAt < 60000) return;
@@ -83,9 +84,12 @@ async function poll() {
 
 ${reply}`).catch(() => {});
     } else if (c.cmd === 'send') {
-      const { to, text } = JSON.parse(c.arg || '{}');
+      const { to, text, template } = JSON.parse(c.arg || '{}');
       const num = String(to || '').replace(/\D/g, '');
-      if (num && text) {
+      if (config.mode === 'business') {
+        const r = await require('./agent/core').execute('send_message', { num, text, template }, 'Mensagem de serviço pelo CRM');
+        wa.log(`Modelo de serviço: ${r.status}${r.error ? ' — ' + r.error : ''}`);
+      } else if (num && text) {
         await wa.send(`${num}@s.whatsapp.net`, String(text).slice(0, 4000));
         wa.log(`manual: enviado para ${num}`);
       }

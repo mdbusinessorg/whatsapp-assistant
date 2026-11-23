@@ -36,22 +36,28 @@ function renderObj() {
   <p style="margin-top:22px"><b style="font-weight:500">Produtos mais procurados</b></p>${s.topProducts.map(([k, n]) => chip(`${k} · ${n}`, true)).join('') || '<div class="empty">—</div>'}</div>
   <div class="dark"><b style="font-weight:500">Recomendações</b>${s.insights.map((i) => `<p class="small">💡 ${esc(i)}</p>`).join('') || '<p class="small muted">Os insights aparecem quando houver conversas suficientes.</p>'}</div></div>`;
 }
+function templateSelect(id) {
+  return `<select class="in" id="${id}" aria-label="Modelo de serviço"><option value="">Escolhe um modelo de serviço</option>${Object.entries(D?.serviceTemplates || {}).map(([k,v]) => `<option value="${esc(k)}">${esc(v)}</option>`).join('')}</select>`;
+}
 function renderWa() {
   const on = online(), ta = $('ctx');
   const keep = ta && (ta.dataset.dirty || document.activeElement === ta) ? ta.value : null;
+  const recipient = $('to')?.value || '', selected = $('msg')?.value || '';
   $('v-wa').innerHTML = `<h1>WhatsApp</h1><div class="grid">
   <div class="dark">${D?.qr && on ? `<img class="qr" src="${D.qr}">` : `<div class="orb ${on && D?.connected ? '' : 'off'}"></div>`}
     <p class="small">${on ? (D.connected ? `Ligado como +${esc(D.selfNum)}` : 'À espera do QR (Aparelhos ligados → Ligar aparelho)') : 'Servidor offline — reinicia sozinho em minutos'}</p>
     <button class="btn l" onclick="cmd('toggle')">${D?.paused ? '▶ Retomar' : '⏸ Pausar'} o bot</button></div>
-  <div class="card"><b style="font-weight:500">Enviar mensagem</b><p><input class="in" id="to" placeholder="Número (ex.: 244923000000)"></p><p><textarea id="msg" rows="3" placeholder="Mensagem"></textarea></p>
+  <div class="card"><b style="font-weight:500">Mensagem de serviço</b><p><input class="in" id="to" placeholder="Número de um cliente do CRM"></p><p>${templateSelect('msg')}</p>
     <button class="btn" onclick="sendTo($('to').value,$('msg').value)">Enviar</button></div>
   <div class="card wide"><b style="font-weight:500">Informação da empresa (serviços, preços, FAQ)</b><p class="small muted">O bot só usa esta informação — preços fora daqui são bloqueados.</p>
     <textarea id="ctx" rows="14" oninput="this.dataset.dirty=1"></textarea><p><button class="btn" onclick="cmd('context',$('ctx').value);$('ctx').dataset.dirty=''">Guardar</button></p></div>
   <div class="card wide"><b style="font-weight:500">Log</b><pre>${esc((D?.logs || []).join('\n') || '(vazio)')}</pre></div></div>`;
   $('ctx').value = keep ?? (D?.context || '');
+  $('to').value = recipient;
+  $('msg').value = selected;
   if (keep != null) $('ctx').dataset.dirty = 1;
 }
-function sendTo(to, text) { if (!to || !text) return toast('Falta número ou mensagem'); cmd('send', JSON.stringify({ to, text })); }
+function sendTo(to, template) { if (!to || !template) return toast('Indica o cliente e escolhe um modelo'); cmd('send', JSON.stringify({ to, template })); }
 function openLead(jid) {
   const l = S().leads.find((x) => x.jid === jid); if (!l) return;
   const facts = Object.entries(l.facts || {}).filter(([, v]) => v);
@@ -63,7 +69,7 @@ function openLead(jid) {
   ${l.objections?.length ? `<p class="small"><b>Objeções por resolver:</b> ${l.objections.map((o) => OBJ[o] || o).join(', ')}</p>` : ''}
   <p class="small muted">${l.messages} mensagens · ${l.followUps} follow-ups · última mensagem há ${ago(l.lastCustomerAt)}${l.optOut ? ' · pediu para não ser contactado' : ''}</p>
   <p class="row" style="flex-wrap:wrap"><button class="btn" onclick="outcome('${l.num}','won')">✓ Vendido</button><button class="btn l" onclick="outcome('${l.num}','lost')">Perdido</button><button class="btn l" onclick="outcome('${l.num}','open')">Reabrir</button><a class="btn l" style="text-decoration:none" target="_blank" href="https://wa.me/${esc(l.num)}">Abrir no WhatsApp</a></p>
-  <p><textarea id="lmsg" rows="3" placeholder="Mensagem para este cliente"></textarea></p><button class="btn" onclick="sendTo('${l.num}',$('lmsg').value)">Enviar mensagem</button>`;
+  <p>${templateSelect('lmsg')}</p><button class="btn" onclick="sendTo('${l.num}',$('lmsg').value)">Enviar modelo de serviço</button>`;
   $('modal').classList.add('on');
 }
 function closeLead() { $('modal').classList.remove('on'); }

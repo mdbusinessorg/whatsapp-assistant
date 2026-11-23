@@ -80,6 +80,10 @@ ${qrImg ? `<div class="card"><b>Escaneia com o WhatsApp</b> (Aparelhos ligados ‚
 
 app.post('/send', async (req, res) => {
   const to = String(req.body.to || '').replace(/\D/g, '');
+  if (config.mode === 'business') {
+    const r = await require('./agent/core').execute('send_message', { num: to, template: req.body.template, text: req.body.text }, 'Mensagem de servi√ßo pelo painel');
+    return res.status(r.status === 'completed' ? 200 : r.status === 'waiting_approval' ? 202 : 400).json(r);
+  }
   const text = String(req.body.text || '').slice(0, 4000);
   if (!to || !text) return res.status(400).send('Falta "to" e/ou "text".');
   const jid = to.includes('@') ? to : `${to}@s.whatsapp.net`;
