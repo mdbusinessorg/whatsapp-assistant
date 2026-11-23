@@ -9,7 +9,7 @@ const permissions = require('./permissions');
 const audit = require('./audit');
 
 const FILE = path.join(config.dataDir, 'agent-state.json');
-let S = { memory: [], pending: null };
+let S = { memory: [], pending: null, chat: [] };
 try {
   S = { ...S, ...JSON.parse(fs.readFileSync(FILE, 'utf8')) };
 } catch {}
@@ -72,7 +72,21 @@ function trim() {
   while (S.memory.length && S.memory[0].role !== 'user') S.memory.shift();
 }
 
-async function run(text) {
+// conversa visível no CRM (ordens e respostas, sem detalhes das ferramentas)
+async function run(text, via = 'whatsapp') {
+  S.chat = [...(S.chat || []), { role: 'user', text, via, at: Date.now() }].slice(-60);
+  let reply;
+  try {
+    reply = await runInner(text);
+  } catch (e) {
+    reply = `⚠️ Erro: ${e.message}`;
+  }
+  S.chat = [...S.chat, { role: 'assistant', text: reply, at: Date.now() }].slice(-60);
+  save();
+  return reply;
+}
+
+async function runInner(text) {
   // aprovação pendente
   if (S.pending && Date.now() - S.pending.at < 30 * 60000) {
     if (/^\s*(sim|confirmo|confirma|ok|pode|avan[çc]a|aprovado|faz)\b/i.test(text)) {
@@ -124,6 +138,6 @@ function summarize(r) {
   return '';
 }
 
-const status = () => ({ pending: S.pending, audit: audit.recent(40), models: MODELS, tools: Object.keys(T) });
+const status = () => ({ pending: S.pending, audit: audit.recent(40), chat: (S.chat || []).slice(-40), models: MODELS, tools: Object.keys(T) });
 
 module.exports = { run, execute, status };

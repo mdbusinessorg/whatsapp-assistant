@@ -20,7 +20,7 @@ const I = {
   file: '<path d="M6 3h8l4 4v14H6z"/>',
 };
 const svg = (k) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${I[k]}</svg>`;
-const NAV = [['home', 'Painel'], ['leads', 'Leads'], ['funnel', 'Funil'], ['follow', 'Pendentes'], ['obj', 'Objeções'], ['act', 'Agente'], ['wa', 'WhatsApp']];
+const NAV = [['home', 'Painel'], ['leads', 'Leads'], ['funnel', 'Funil'], ['follow', 'Pendentes'], ['act', 'Chat'], ['obj', 'Objeções'], ['wa', 'WhatsApp']];
 const STAGE = { initial_contact: 'Contacto inicial', discovery: 'Descoberta', qualification: 'Qualificação', recommendation: 'Recomendação', value_presentation: 'Valor', objection_handling: 'Objeções', conversion: 'Conversão', confirmation: 'Confirmação', post_sale: 'Pós-venda' };
 const CAT = { cold: 'Frio', developing: 'Em desenvolvimento', qualified: 'Qualificado', hot: 'Quente', ready: 'Pronto a comprar' };
 const OBJ = { price: 'Preço', no_money: 'Sem dinheiro', think: 'Vou pensar', partner: 'Falar com parceiro', later: 'Mais tarde', wait: 'Esperar', compare: 'Comparar', trust: 'Confiança', fraud: 'Medo de fraude', not_needed: 'Não precisa', not_interested: 'Sem interesse', browsing: 'Só a ver', more_info: 'Mais informação', unsure: 'Indeciso', other_supplier: 'Outro fornecedor', prepayment: 'Pagamento antecipado' };

@@ -90,4 +90,11 @@ pre{white-space:pre-wrap;font-size:11px;max-height:340px;overflow:auto;backgroun
 .login{max-width:380px;margin:18vh auto;text-align:center;position:relative;z-index:2}
 .empty{color:var(--muted);font-size:12px;padding:12px 0}
 .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#000;color:#fff;padding:10px 18px;border-radius:99px;font-size:12px;z-index:10;display:none}
-@media(max-width:1000px){.shell{grid-template-columns:1fr;margin:10px;border-radius:28px}.side{min-height:auto;flex-direction:row;padding:10px;overflow:auto}.logo{margin:0 14px 0 0}.me{display:none}.nav{flex-direction:row}.nav a span{display:none}.grid{grid-template-columns:1fr}.teamwrap{grid-column:auto}.cols{grid-template-columns:1fr}}
+@media(max-width:1000px){.shell{grid-template-columns:1fr;margin:8px 8px 92px;border-radius:28px;padding:14px}.side{position:fixed;left:8px;right:8px;bottom:8px;z-index:8;min-height:auto;padding:6px;border-radius:26px;box-shadow:0 10px 30px rgba(0,0,0,.18);flex-direction:row;background:rgba(255,255,255,.95)}.logo,.me{display:none}.nav{flex-direction:row;width:100%;gap:2px}.nav a{flex:1;flex-direction:column;gap:3px;padding:8px 2px;font-size:9.5px;justify-content:center;min-width:0;border-radius:20px}.nav a span{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}.grid{grid-template-columns:1fr!important}.teamwrap,.grid>[style*="span 2"]{grid-column:auto!important}.cols{grid-template-columns:1fr}.top{justify-content:flex-start}.search{max-width:none;order:-1;flex-basis:100%}h1{font-size:30px}table{display:block;overflow-x:auto;white-space:nowrap}.funnel{grid-template-columns:92px 1fr}.chat{max-height:58vh}.msg{max-width:88%}}
+.chat{display:flex;flex-direction:column;gap:8px;max-height:52vh;min-height:220px;overflow:auto;padding:6px 2px}
+.msg{max-width:78%;padding:10px 14px;border-radius:18px;font-size:13px;line-height:1.4;white-space:pre-wrap;word-wrap:break-word}
+.msg.u{align-self:flex-end;background:#000;color:#fff;border-bottom-right-radius:6px}
+.msg.a{align-self:flex-start;background:#fff;border:1px solid #e3e3e5;border-bottom-left-radius:6px}
+.msg small{display:block;opacity:.55;font-size:10px;margin-top:4px}
+.composer{display:flex;gap:8px;margin-top:10px;align-items:flex-end}.composer textarea{flex:1;resize:none}
+.sugs{display:flex;gap:6px;overflow-x:auto;margin-top:8px;padding-bottom:4px}.sugs button{white-space:nowrap;font-size:11px;padding:7px 12px}
