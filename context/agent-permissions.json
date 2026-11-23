@@ -1,6 +1,6 @@
 {
   "levels": {
-    "autonomous": ["search_leads", "get_lead", "list_pending", "sales_report", "update_lead", "send_message", "reply_pending", "set_bot_paused", "schedule_reminder", "get_conversation"],
+    "autonomous": ["search_leads", "get_lead", "list_pending", "sales_report", "update_lead", "send_message", "reply_pending", "set_bot_paused", "schedule_reminder", "get_conversation", "discover_shops", "list_shops", "shop_proposal", "rate_shop"],
     "limits": ["assign_lead"],
     "approval": ["delete_lead", "broadcast"]
   },

@@ -131,6 +131,10 @@ async function handleIncoming(msg) {
   if (state.paused || state.chatsMuted.includes(jid)) return;
   if (isGroup && !state.replyGroups && !mentionedMe(msg)) return;
 
+  if (sales && text && !isGroup && !owner && !fromMe) {
+    if (await require('./sales/prospecting').onRequest({ text, jid, num: senderNum, blocked: sales.profiles.contactBlocked(senderNum, jid), send })) return;
+  }
+
   await sock.sendPresenceUpdate('composing', jid).catch(() => {});
 
   try {

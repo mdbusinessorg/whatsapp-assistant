@@ -48,8 +48,13 @@ function merge(p, a, det, text) {
   p.buyingSignals += det.buyingSignals + (a.intent === 'purchase' ? 1 : 0);
   if (a.style) p.style = a.style;
   if (det.optOut) p.optOut = true;
-  if (det.optOut || a.declined || a.intent === 'decline') p.declined = true;
-  else if (det.buyingSignals || a.intent === 'purchase' || a.intent === 'quote') p.declined = false;
+  if (det.optOut || a.declined || a.intent === 'decline' || objs.some(o => o.type === 'not_interested')) {
+    p.declined = true;
+    p.declinedAt = p.lastCustomerAt;
+  } else if (!a.error && (a.intent === 'purchase' || a.intent === 'quote')) {
+    p.declined = false;
+    p.renewedInterestAt = p.lastCustomerAt;
+  }
 }
 
 function fallbackAnalysis(det) {
@@ -67,7 +72,7 @@ function fallbackAnalysis(det) {
 
 async function respond({ jid, num, name, text, history }) {
   const p = profiles.get(jid);
-  if (num) p.num = num;
+  if (num) p.inboundNum = p.num = num;
   if (name && !p.name) p.name = name;
   if (p.followUps.some((f) => f.at > p.lastCustomerAt)) p.recovered = true; // respondeu depois de um follow-up
   p.messages += 1;
@@ -91,7 +96,6 @@ async function respond({ jid, num, name, text, history }) {
   const pol = { ...policy.get(), ...(p.override || {}) }; // o dono pode dar limites por cliente (ex.: desconto máx.)
   const pl = strategy.plan(p, a, det, pol);
   if (p.managed) pl.directives.push(`O dono atribuiu-te este cliente: objectivo "${p.managed.goal || 'concluir a venda'}". Conduz até fechar, recusar ou pedir humano.`);
-  if (pl.action === 'respect_decline' && !p.declined && a.objection?.type === 'not_interested') p.declined = true;
 
   const context = readContext();
   const system = [
@@ -144,10 +148,11 @@ function startFollowUps({ send, getHistory, pushHistory, saveHistories, log }) {
   if (process.env.SALES_FOLLOWUPS === 'off') return;
   const tick = async () => {
     if (!followup.inBusinessHours()) return;
-    for (const p of followup.dueLeads(profiles.all()).slice(0, 5)) {
+    const eligible = profiles.all().filter(p => p.num && profiles.chatNumber(p) === p.num && !profiles.contactBlocked(p.num, p.jid));
+    for (const p of followup.dueLeads(eligible).slice(0, 5)) {
       try {
         const msg = await composeFollowUp(p, getHistory(p.jid));
-        if (!msg) continue;
+        if (!msg || !followup.dueLeads([p]).length || profiles.chatNumber(p) !== p.num || profiles.contactBlocked(p.num, p.jid)) continue;
         await send(p.jid, msg);
         pushHistory(p.jid, 'assistant', msg);
         saveHistories();

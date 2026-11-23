@@ -45,10 +45,34 @@ const save = () => {
   fs.renameSync(FILE + '.tmp', FILE);
 };
 const remove = (jid) => {
+  require('./prospecting').forgetChat(jid, leads[jid]?.num);
   delete leads[jid];
   save();
 };
 const findByNum = (num) => all().find((l) => l.num === String(num).replace(/\D/g, ''));
+const chatNumber = p => {
+  const m = /^(\d+)(?::\d+)?@(s\.whatsapp\.net|lid)$/.exec(p.jid);
+  return m && (m[2] === 'lid' ? p.inboundNum : m[1]);
+};
+// Nos LID antigos o número guardado só pode bloquear contacto, nunca autorizá-lo.
+const suppressionNumber = p => chatNumber(p) || (/^\d+(?::\d+)?@lid$/.test(p.jid) ? (p.legacyNum ?? p.num) : '');
+const editNumber = (p, num) => {
+  if (p.legacyNum == null && !chatNumber(p)) p.legacyNum = p.num;
+  p.num = num;
+};
+const inboundByNum = (num, jid) => {
+  const n = String(num || '').replace(/\D/g, '');
+  const candidates = jid == null ? all() : [leads[jid]];
+  return n && candidates.filter(p => p && p.num === n && p.lastCustomerAt && chatNumber(p) === n)
+    .sort((a, b) => b.lastCustomerAt - a.lastCustomerAt)[0];
+};
+const contactBlocked = (num, jid) => {
+  const n = String(num || '').replace(/\D/g, '');
+  const current = leads[jid];
+  const renewedAt = current && chatNumber(current) === n ? current.renewedInterestAt || 0 : 0;
+  return all().some(p => (p.jid === jid || (n && suppressionNumber(p) === n)) &&
+    (p.optOut || (p.declined && (p.jid === jid || (p.declinedAt ?? p.lastCustomerAt ?? 0) >= renewedAt))));
+};
 
 // Resumo compacto para o prompt (em vez de reenviar tudo)
 function summary(p) {
@@ -70,4 +94,4 @@ function summary(p) {
     .join('\n');
 }
 
-module.exports = { get, all, save, remove, findByNum, summary, blank };
+module.exports = { get, all, save, remove, findByNum, inboundByNum, chatNumber, editNumber, contactBlocked, summary, blank };

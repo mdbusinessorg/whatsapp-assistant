@@ -13,7 +13,7 @@ const OBJECTIONS = {
   trust: { kind: 'trust', re: /nao confio|confianca|como (sei|posso saber)|e (de )?confianca|sao reais|e seguro|referencias|portfolio|trabalhos anteriores/ },
   fraud: { kind: 'trust', re: /fraude|burla|esquema|golpe|scam|enganar|roubar o meu dinheiro/ },
   not_needed: { kind: 'genuine', re: /nao preciso( disso)?( agora)?|nao me faz falta|nao e necessario|ja tenho (site|website|loja|pagina)/ },
-  not_interested: { kind: 'polite_refusal', re: /nao (estou|to|tou) interessad|sem interesse|nao me interessa|nao quero( mais)?\b/ },
+  not_interested: { kind: 'polite_refusal', re: /nao (estou|to|tou) interessad|sem interesse|nao me interessa|^\s*nao quero(?: mais)?(?:[,\s]+obrigad[oa])?[.!\s]*$/ },
   browsing: { kind: 'informational', re: /so (estou|to|tou) a (consultar|ver|perguntar)|so curiosidade|so queria saber|apenas a ver/ },
   more_info: { kind: 'informational', re: /manda (mais )?(informac|detalhes|info)|envia (mais )?(informac|detalhes)|mais detalhes|tem (catalogo|brochura|pdf)/ },
   unsure: { kind: 'emotional', re: /nao tenho (a )?certeza|estou (em )?duvida|nao sei se|tenho duvidas|indecis/ },
@@ -36,7 +36,7 @@ const BUYING = [
   /envia(r)? (a )?(proposta|fatura|factura|orcamento formal)/,
 ];
 
-const DECLINE = /(para|pare|deixa) de (me )?(mandar|enviar|contactar)|nao (me )?(mande|envie|contacte)s? mais|nao quero (mais )?(mensagens|contacto)|remove o meu numero|apaga(r)? (os )?meus dados|\bstop\b|cancelar subscricao/;
+const DECLINE = /(para|pare|deixa) de (me )?(mandar|enviar|contactar)|nao (me )?(mande|envie|contacte)s? mais|nao quero (?:mais )?(?:(?:voltar a )?receber )?(?:mais )?(?:mensagens|contactos?)\b|remove o meu numero|apaga(r)? (os )?meus dados|\bstop\b|cancelar subscricao/;
 const FRUSTRATION = /(estou|to|tou) (farto|chateado|irritado)|que (mau|pessimo) atendimento|ninguem responde|ja (disse|expliquei)|nao (entendes|percebes)|absurdo|ridiculo|\bfoda\b|merda/;
 const DELETION = /apaga(r)? (os |todos os )?(meus )?dados|elimina(r)? (os )?(meus )?dados|remove(r)? (os )?meus dados|esquece (os )?meus dados/;
 const HUMAN = /falar com (alguem|uma pessoa|o responsavel|humano|um atendente|o dono|o ceo)|quero (um )?humano|atendente/;

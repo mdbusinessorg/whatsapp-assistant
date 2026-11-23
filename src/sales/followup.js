@@ -9,8 +9,10 @@ function dueLeads(leads, now = Date.now(), pol = policy.get()) {
     if (l.status !== 'open' || l.optOut || l.declined) return false;
     if (l.score < (pol.followUpMinScore ?? 30)) return false;
     if (!(l.lastBotAt > l.lastCustomerAt)) return false; // a bola está do lado do cliente
-    const n = l.followUps.filter((f) => f.at > l.lastCustomerAt).length;
+    const sinceReply = l.followUps.filter((f) => f.at > l.lastCustomerAt);
+    const n = sinceReply.length;
     if (n >= max) return false;
+    if (n && now - Math.max(...sinceReply.map(f => f.at)) < (hours[n] - hours[n-1]) * 3600e3) return false;
     return now - l.lastCustomerAt >= hours[n] * 3600e3;
   });
 }
