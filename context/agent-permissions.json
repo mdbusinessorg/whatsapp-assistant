@@ -1,0 +1,11 @@
+{
+  "levels": {
+    "autonomous": ["search_leads", "get_lead", "list_pending", "sales_report", "update_lead", "send_message", "reply_pending", "set_bot_paused", "schedule_reminder", "get_conversation"],
+    "limits": ["assign_lead"],
+    "approval": ["delete_lead", "broadcast"]
+  },
+  "limits": {
+    "maxDiscountPct": 10,
+    "maxMessagesPerRun": 20
+  }
+}

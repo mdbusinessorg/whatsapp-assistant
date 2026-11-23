@@ -103,6 +103,8 @@ app.post('/toggle', async (req, res) => {
   res.redirect('./');
 });
 
+app.get('/sales', (req, res) => res.json(config.mode === 'business' ? require('./sales').dashboard() : {}));
+
 app.get('/healthz', (req, res) => res.send('ok'));
 
 function start() {

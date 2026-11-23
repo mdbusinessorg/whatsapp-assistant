@@ -1,3 +1,6 @@
 node_modules/
 data/
 .env
+sim-results.json
+sim*.log
+agent-live.log

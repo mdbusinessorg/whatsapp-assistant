@@ -1,0 +1,14 @@
+{
+  "currency": "Kz",
+  "maxDiscountPct": 0,
+  "minPriceRule": "Nunca abaixo dos preços publicados na tabela.",
+  "authorizedOffers": [],
+  "bundles": [],
+  "paymentOptions": ["Transferência bancária (Angola)", "Multicaixa Express", "Pagamentos internacionais"],
+  "paymentTerms": "50% no início do projecto e 50% na entrega aprovada.",
+  "deliveryConditions": "Prazo depende do âmbito; é confirmado na proposta.",
+  "negotiationBoundaries": "Sem descontos autorizados. Antes de baixar valor: ajustar âmbito (plano mais simples), faseamento do projecto ou explicar o valor. Qualquer pedido de desconto fora disto passa para a equipa.",
+  "followUpHours": [24, 72, 168],
+  "maxFollowUps": 3,
+  "followUpMinScore": 30
+}
