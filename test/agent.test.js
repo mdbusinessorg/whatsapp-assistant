@@ -229,3 +229,15 @@ test('perguntas de apoio e análise indisponível não anulam a recusa', async t
     assert.ok(profiles.contactBlocked(n,jid));
   }
 });
+test('uma recusa repetida por objeção prevalece sobre a compra entre as duas recusas', async t => {
+  const n='244900079992', phone=n+'@s.whatsapp.net', lid='990079992@lid';
+  const old=lead(lid,{num:n,inboundNum:n,lastCustomerAt:10,declinedAt:10,declined:true});
+  lead(phone,{num:n,lastCustomerAt:20,renewedInterestAt:20});
+  assert.ok(!profiles.contactBlocked(n,phone));
+  t.mock.method(require('../src/sales/analyzer'),'analyze',async () => ({intent:'info',objection:{type:'not_interested'}}));
+  t.mock.method(require('../src/brain'),'complete',async () => 'Obrigado por avisares.');
+  const text='Não tenho interesse.';
+  await require('../src/sales').respond({jid:lid,num:n,text,history:[{role:'user',content:text}]});
+  assert.ok(old.declinedAt>20);
+  assert.ok(profiles.contactBlocked(n,phone));
+});
