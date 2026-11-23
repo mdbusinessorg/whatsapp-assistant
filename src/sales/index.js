@@ -67,7 +67,7 @@ function fallbackAnalysis(det) {
 
 async function respond({ jid, num, name, text, history }) {
   const p = profiles.get(jid);
-  if (num) p.num = num;
+  if (num) p.inboundNum = p.num = num;
   if (name && !p.name) p.name = name;
   if (p.followUps.some((f) => f.at > p.lastCustomerAt)) p.recovered = true; // respondeu depois de um follow-up
   p.messages += 1;
@@ -144,7 +144,8 @@ function startFollowUps({ send, getHistory, pushHistory, saveHistories, log }) {
   if (process.env.SALES_FOLLOWUPS === 'off') return;
   const tick = async () => {
     if (!followup.inBusinessHours()) return;
-    for (const p of followup.dueLeads(profiles.all()).slice(0, 5)) {
+    const eligible = profiles.all().filter(p => p.num && profiles.chatNumber(p) === p.num);
+    for (const p of followup.dueLeads(eligible).slice(0, 5)) {
       try {
         const msg = await composeFollowUp(p, getHistory(p.jid));
         if (!msg) continue;

@@ -50,6 +50,14 @@ const remove = (jid) => {
   save();
 };
 const findByNum = (num) => all().find((l) => l.num === String(num).replace(/\D/g, ''));
+const chatNumber = p => {
+  const m = /^(\d+)(?::\d+)?@(s\.whatsapp\.net|lid)$/.exec(p.jid);
+  return m && (m[2] === 'lid' ? p.inboundNum : m[1]);
+};
+const inboundByNum = num => {
+  const n = String(num || '').replace(/\D/g, '');
+  return n && all().find(p => p.num === n && p.lastCustomerAt && chatNumber(p) === n);
+};
 
 // Resumo compacto para o prompt (em vez de reenviar tudo)
 function summary(p) {
@@ -71,4 +79,4 @@ function summary(p) {
     .join('\n');
 }
 
-module.exports = { get, all, save, remove, findByNum, summary, blank };
+module.exports = { get, all, save, remove, findByNum, inboundByNum, chatNumber, summary, blank };

@@ -12,8 +12,8 @@ function textFor(template) {
 }
 async function send(num, template) {
   const text = textFor(template);
-  const p = profiles.findByNum(num);
-  if (!p?.lastCustomerAt || !/^\d+(?::\d+)?@(s\.whatsapp\.net|lid)$/.test(p.jid)) throw new Error('Não há conversa privada iniciada por este cliente.');
+  const p = profiles.inboundByNum(num);
+  if (!p) throw new Error('O número indicado ainda não iniciou uma conversa privada confirmada.');
   if (p.optOut || p.declined) throw new Error('O cliente pediu para não ser contactado.');
   const res = await require('../whatsapp').send(p.jid, text);
   if (res?.key?.id) {

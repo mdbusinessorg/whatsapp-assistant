@@ -127,6 +127,18 @@ test('uma ordem mista executa todas as ferramentas sem expor fichas ao modelo', 
     assert.doesNotMatch(contexts.join(''),/Etiqueta externa de teste/);
   } finally { api.create = original; paused = false; }
 });
+test('alterar o número no CRM não autoriza enviar ao chat antigo nem ao novo', async () => {
+  const service = require('../src/sales/service-messages');
+  const first = '244900012340', next = '244900012341', jid = '9012340@lid';
+  lead(jid,{num:first,inboundNum:first,lastCustomerAt:Date.now()});
+  await core.execute('update_lead',{num:first,new_num:next},'corrige o número');
+  const before = sent.length;
+  await assert.rejects(service.send(next,'entrega'), /conversa privada/);
+  assert.equal(sent.length,before);
+  lead(`${next}@s.whatsapp.net`,{num:next,lastCustomerAt:Date.now()});
+  await service.send(next,'entrega');
+  assert.equal(sent.at(-1).jid,`${next}@s.whatsapp.net`);
+});
 
 test('duas pesquisas na mesma ordem conservam todas as fichas na selecção do CRM', async t => {
   const dir = require('../src/sales/shop-directory');
