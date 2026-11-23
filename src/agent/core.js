@@ -87,12 +87,26 @@ async function run(text, via = 'whatsapp') {
   return reply;
 }
 
+const directoryTools = new Set(['discover_shops', 'list_shops', 'shop_proposal', 'rate_shop']);
+function directoryReply(name, r) {
+  const data = r.result;
+  const shops = !data ? [] : name === 'discover_shops' ? data.shops : name === 'list_shops' ? data : [data];
+  // Só IDs controlados pela aplicação podem voltar ao contexto com ferramentas privilegiadas.
+  const ids = shops.map(s => s.id).filter(id => /^[a-z0-9-]{1,64}$/.test(id)).slice(0, 20);
+  S.memory.push({ role: 'assistant', content: `${name}: ${r.status}; IDs: ${ids.join(', ') || '—'}.` });
+  trim();
+  if (r.status === 'waiting_approval') return 'A consulta requer aprovação. Confirmas?';
+  if (r.status !== 'completed') return r.error || 'Não foi possível concluir.';
+  if (name === 'rate_shop') return 'Avaliação guardada para as próximas pesquisas.';
+  if (name === 'shop_proposal') return `${data.name} · ${data.source}\n\n${data.proposal}`;
+  return shops.length ? shops.map(s => `${s.name} · ${s.sector} (${s.id})`).join('\n') + '\nNenhuma mensagem enviada.' : 'Não encontrei lojas para esse filtro.';
+}
+
 async function runInner(text) {
   const search = /^Pesquisar lojas: (.{1,80})$/i.exec(text);
   if (search) {
-    const r = await execute('discover_shops', { sector: search[1] }, text);
-    if (r.status !== 'completed') return r.error || r.reason;
-    return r.result.count ? `Encontrei ${r.result.count} loja(s): ${r.result.shops.map(s => s.name).join(', ')}. Os rascunhos estão na secção Prospecção. Nenhuma proposta foi enviada.` : 'Não encontrei novas lojas para esse filtro. Experimenta outro ramo.';
+    S.memory.push({ role: 'user', content: 'Pesquisar lojas com o filtro do CRM.' });
+    return directoryReply('discover_shops', await execute('discover_shops', { sector: search[1] }, text));
   }
   const rating = /^Avaliar loja ([a-z0-9-]+): (relevant|dismiss|neutral)$/.exec(text);
   if (rating) {
@@ -106,6 +120,7 @@ async function runInner(text) {
       S.pending = null;
       save();
       const r = await execute(p.tool, p.args, p.instruction, true);
+      if (directoryTools.has(p.tool)) return directoryReply(p.tool, r);
       S.memory.push({ role: 'user', content: text }, { role: 'assistant', content: `Executei ${p.tool} após aprovação: ${JSON.stringify(r).slice(0, 800)}` });
       trim();
       save();
@@ -122,6 +137,11 @@ async function runInner(text) {
   for (let i = 0; i < 8; i++) {
     const msg = await callModel([{ role: 'system', content: SYSTEM() }, ...S.memory]);
     const calls = msg.tool_calls || [];
+    const lookup = calls.find(c => directoryTools.has(c.function.name));
+    if (lookup) {
+      const args = JSON.parse(lookup.function.arguments || '{}');
+      return directoryReply(lookup.function.name, await execute(lookup.function.name, args, text));
+    }
     S.memory.push({ role: 'assistant', content: msg.content || '', ...(calls.length ? { tool_calls: calls } : {}) });
     if (!calls.length) {
       trim();

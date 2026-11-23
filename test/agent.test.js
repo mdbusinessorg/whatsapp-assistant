@@ -73,3 +73,22 @@ test('auditoria regista cada acção com estado', () => {
   const st = core.status().audit.map((e) => e.status);
   for (const s of ['completed', 'failed', 'waiting_approval', 'cancelled']) assert.ok(st.includes(s), s);
 });
+
+test('o modelo privilegiado não recebe nomes, rascunhos nem resultados externos', async () => {
+  const pipeline = require('../src/sales/prospecting');
+  await pipeline.discover('', async () => [{id:'node-910',name:'Etiqueta externa de teste',tag:'computer',region:'Luanda',source:'https://www.openstreetmap.org/node/910'}]);
+  const api = require('../src/brain').groq.chat.completions;
+  const original = api.create;
+  const contexts = [];
+  api.create = async ({messages}) => {
+    contexts.push(JSON.stringify(messages));
+    return { choices: [{ message: contexts.length === 1 ? { tool_calls: [{function:{name:'list_shops',arguments:'{}'}}] } : {content:'Ok'} }] };
+  };
+  try {
+    assert.match(await core.run('Lista as lojas'), /Etiqueta externa de teste/);
+    await core.run('Qual era o ID?');
+    assert.equal(contexts.length, 2);
+    assert.match(contexts[1], /node-910/);
+    assert.doesNotMatch(contexts.join(''), /Etiqueta externa de teste/);
+  } finally { api.create = original; }
+});
