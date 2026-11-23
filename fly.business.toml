@@ -26,3 +26,4 @@ primary_region = "gru"
 [env]
   ASSISTANT_MODE = "business"
   BUSINESS_NAME = "MD Business"
+  OWNER_NUMBER = "244926115429"

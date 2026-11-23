@@ -74,6 +74,7 @@ Variáveis com prefixo do nome (ex.: `BUSINESS_OWNER_NUMBER`) só se aplicam a e
 
 ```
 INSTANCES=pessoal:personal,business:business
+BUSINESS_OWNER_NUMBER=244926115429   # quem recebe os avisos de novos clientes
 GROQ_API_KEY=...  WEB_TOKEN=...
 SUPABASE_URL=https://<proj>.supabase.co  SUPABASE_SERVICE_KEY=...   # guarda a sessão WhatsApp (não perde o QR)
 ```
