@@ -144,11 +144,11 @@ function startFollowUps({ send, getHistory, pushHistory, saveHistories, log }) {
   if (process.env.SALES_FOLLOWUPS === 'off') return;
   const tick = async () => {
     if (!followup.inBusinessHours()) return;
-    const eligible = profiles.all().filter(p => p.num && profiles.chatNumber(p) === p.num);
+    const eligible = profiles.all().filter(p => p.num && profiles.chatNumber(p) === p.num && !profiles.contactBlocked(p.num, p.jid));
     for (const p of followup.dueLeads(eligible).slice(0, 5)) {
       try {
         const msg = await composeFollowUp(p, getHistory(p.jid));
-        if (!msg || !followup.dueLeads([p]).length || profiles.chatNumber(p) !== p.num) continue;
+        if (!msg || !followup.dueLeads([p]).length || profiles.chatNumber(p) !== p.num || profiles.contactBlocked(p.num, p.jid)) continue;
         await send(p.jid, msg);
         pushHistory(p.jid, 'assistant', msg);
         saveHistories();

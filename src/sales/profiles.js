@@ -58,6 +58,10 @@ const inboundByNum = num => {
   const n = String(num || '').replace(/\D/g, '');
   return n && all().find(p => p.num === n && p.lastCustomerAt && chatNumber(p) === n);
 };
+const contactBlocked = (num, jid) => {
+  const n = String(num || '').replace(/\D/g, '');
+  return all().some(p => (p.optOut || p.declined) && (p.jid === jid || (n && (p.num === n || chatNumber(p) === n))));
+};
 
 // Resumo compacto para o prompt (em vez de reenviar tudo)
 function summary(p) {
@@ -79,4 +83,4 @@ function summary(p) {
     .join('\n');
 }
 
-module.exports = { get, all, save, remove, findByNum, inboundByNum, chatNumber, summary, blank };
+module.exports = { get, all, save, remove, findByNum, inboundByNum, chatNumber, contactBlocked, summary, blank };

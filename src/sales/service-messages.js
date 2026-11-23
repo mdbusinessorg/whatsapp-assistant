@@ -14,7 +14,7 @@ async function send(num, template) {
   const text = textFor(template);
   const p = profiles.inboundByNum(num);
   if (!p) throw new Error('O número indicado ainda não iniciou uma conversa privada confirmada.');
-  if (p.optOut || p.declined) throw new Error('O cliente pediu para não ser contactado.');
+  if (profiles.contactBlocked(num, p.jid)) throw new Error('O cliente pediu para não ser contactado.');
   const res = await require('../whatsapp').send(p.jid, text);
   if (res?.key?.id) {
     st.pushHistory(p.jid, 'assistant', text);

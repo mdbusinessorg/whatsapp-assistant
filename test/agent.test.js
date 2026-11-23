@@ -165,3 +165,15 @@ test('um acompanhamento manual adia o automático mesmo num pedido antigo', asyn
   assert.equal(dueLeads([p],p.lastBotAt+30*60000).length,0);
   assert.equal(dueLeads([p],p.lastBotAt+48*h).length,1);
 });
+test('recusa num perfil LID antigo também impede envios ao perfil de telefone', async () => {
+  const n='244900033300', phone=`${n}@s.whatsapp.net`;
+  lead(phone,{num:n,lastCustomerAt:Date.now()});
+  const legacy = lead('900033300@lid',{num:n,optOut:true});
+  const before=sent.length;
+  for (const flag of ['optOut','declined']) {
+    legacy.optOut=false; legacy[flag]=true;
+    await assert.rejects(require('../src/sales/service-messages').send(n,'entrega'),/não ser contactado/);
+    assert.ok(profiles.contactBlocked(n,phone));
+  }
+  assert.equal(sent.length,before);
+});
