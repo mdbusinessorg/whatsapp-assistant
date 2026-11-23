@@ -26,6 +26,7 @@ let lastJson = '';
 let lastAt = 0;
 let lastQr = null;
 let qrImg = null;
+let lastReply = null;
 
 async function publish() {
   const s = wa.status();
@@ -48,6 +49,8 @@ async function publish() {
     qr: qrImg,
     context: readCtx(),
     logs: s.logs.slice(-80),
+    sales: config.mode === 'business' ? require('./sales').dashboard() : null,
+    agent: config.mode === 'business' ? { ...require('./agent/core').status(), lastReply } : null,
   };
   const json = JSON.stringify(data);
   if (json === lastJson && Date.now() - lastAt < 60000) return;
@@ -70,6 +73,15 @@ async function poll() {
     else if (c.cmd === 'context') {
       fs.writeFileSync(CONTEXT_FILE, c.arg || '');
       wa.log('contexto atualizado via painel');
+    } else if (c.cmd === 'outcome' && config.mode === 'business') {
+      const { num, status } = JSON.parse(c.arg || '{}');
+      if (['won', 'lost', 'open'].includes(status)) require('./sales').markOutcome(num, status);
+    } else if (c.cmd === 'agent' && config.mode === 'business') {
+      const reply = await require('./agent/core').run(String(c.arg || ''));
+      lastReply = { text: c.arg, reply, at: Date.now() };
+      await wa.send(`${config.ownerNumber}@s.whatsapp.net`, `🖥️ Ordem do painel: ${c.arg}
+
+${reply}`).catch(() => {});
     } else if (c.cmd === 'send') {
       const { to, text } = JSON.parse(c.arg || '{}');
       const num = String(to || '').replace(/\D/g, '');

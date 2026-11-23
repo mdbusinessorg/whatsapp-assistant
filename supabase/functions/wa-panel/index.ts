@@ -15,7 +15,7 @@ Deno.serve(async (req) => {
   const sb = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
   const body = await req.json().catch(() => ({}));
   if (body.action === "cmd") {
-    if (!["toggle", "context", "send"].includes(body.cmd)) return json({ error: "cmd inválido" }, 400);
+    if (!["toggle", "context", "send", "outcome", "agent"].includes(body.cmd)) return json({ error: "cmd inválido" }, 400);
     const { error } = await sb.from("wa_cmds").insert({
       instance: String(body.instance),
       cmd: body.cmd,

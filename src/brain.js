@@ -37,6 +37,19 @@ async function chat(history) {
   return (res.choices[0]?.message?.content || '').trim();
 }
 
+// Chamada genérica (usada pelo motor de vendas)
+async function complete({ model, messages, temperature = 0.5, max_tokens = 600, json = false, reasoning }) {
+  const res = await groq.chat.completions.create({
+    model: model || config.chatModel,
+    messages,
+    temperature,
+    max_tokens,
+    ...(json ? { response_format: { type: 'json_object' } } : {}),
+    ...(reasoning && /gpt-oss/.test(model || config.chatModel) ? { reasoning_effort: reasoning } : {}),
+  });
+  return (res.choices[0]?.message?.content || '').trim();
+}
+
 // Pergunta solta (fora de uma conversa) — usado para relatórios
 async function ask(prompt) {
   const res = await groq.chat.completions.create({
@@ -68,4 +81,4 @@ async function transcribe(audioBuffer, mimetype = 'audio/ogg') {
   }
 }
 
-module.exports = { chat, ask, transcribe };
+module.exports = { chat, ask, transcribe, complete, buildSystem, groq };

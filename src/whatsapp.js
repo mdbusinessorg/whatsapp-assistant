@@ -13,11 +13,15 @@ const config = require('./config');
 const { state, saveState, getHistory, pushHistory, saveHistories, reminders, removeReminder, logContact, contactsSince } = require('./state');
 const brain = require('./brain');
 const commands = require('./commands');
+const sales = config.mode === 'business' ? require('./sales') : null;
+const agent = config.mode === 'business' ? require('./agent/core') : null;
+const { clearHistory } = require('./state');
 
 const logger = pino({ level: process.env.LOG_LEVEL || 'warn' });
 const AUTH_DIR = path.join(config.dataDir, 'auth');
 
 let sock = null;
+let followUpsStarted = false;
 let latestQr = null;
 let selfNum = null;
 const panelLogs = [];
@@ -31,8 +35,13 @@ function log(line) {
 }
 
 async function send(jid, text) {
-  if (!sock) return;
-  await sock.sendMessage(jid, { text });
+  if (!sock) throw new Error('WhatsApp desligado');
+  return sock.sendMessage(jid, { text });
+}
+
+async function sendAudio(jid, { buffer, mimetype, ptt }) {
+  if (!sock) throw new Error('WhatsApp desligado');
+  return sock.sendMessage(jid, { audio: buffer, mimetype, ptt });
 }
 
 function extractText(msg) {
@@ -61,7 +70,7 @@ function wantsHumanOrQuote(text) {
   return LEAD_RE.test(text);
 }
 
-async function notifyLead(jid, num, name, text) {
+async function notifyLead(jid, num, name, text, extra = '') {
   const last = state.leadsNotified[jid] || 0;
   if (Date.now() - last < 6 * 3600000) return;
   state.leadsNotified[jid] = Date.now();
@@ -73,7 +82,7 @@ async function notifyLead(jid, num, name, text) {
     .join('\n');
   await send(
     `${config.ownerNumber}@s.whatsapp.net`,
-    `💼 *Novo cliente — ${config.businessName}*\n+${num}${name ? ` (${name})` : ''}\n"${text.slice(0, 300)}"\n\n${convo}\n\nwa.me/${num}`
+    `💼 *Novo cliente — ${config.businessName}*\n+${num}${name ? ` (${name})` : ''}\n"${text.slice(0, 300)}"${extra ? `\n${extra}` : ''}\n\n${convo}\n\nwa.me/${num}`
   ).catch((e) => log(`aviso de lead falhou: ${e.message}`));
 }
 
@@ -178,11 +187,32 @@ async function handleIncoming(msg) {
           ? '⚡ Percebi que é urgente — já avisei a equipa.'
           : `⚡ Percebi que é urgente — já avisei o ${config.ownerName} no número principal dele.`
       );
-    } else if (config.mode === 'business' && !isGroup && !owner && config.ownerNumber && wantsHumanOrQuote(userText)) {
-      await notifyLead(jid, senderNum, msg.pushName, userText);
     }
 
-    const reply = await brain.chat(getHistory(jid));
+    let reply;
+    if (sales && !isGroup && !owner) {
+      const r = await sales.respond({ jid, num: senderNum, name: msg.pushName || '', text: userText, history: getHistory(jid) });
+      reply = r.reply;
+      if (r.deleted) clearHistory(jid);
+      const p = r.profile;
+      if (p) {
+        log(`vendas +${senderNum}: ${r.analysis?.intent || '?'} · ${p.stage} · ${p.category} ${p.score}/100 · ${r.plan?.action}${r.issues?.length ? ` · QC: ${r.issues.join('; ')}` : ''}`);
+        if (config.ownerNumber && !state.pendingUrgent[jid] && (wantsHumanOrQuote(userText) || r.detected?.wantsHuman || ['hot', 'ready'].includes(p.category))) {
+          const extra = `📊 Lead ${p.category} (${p.score}/100) · ${p.stage}${p.facts.need ? ` · precisa: ${p.facts.need}` : ''}`;
+          await notifyLead(jid, senderNum, msg.pushName, userText, extra);
+        }
+      }
+    } else if (agent && owner && !isGroup) {
+      reply = await agent.run(userText);
+      if (audio && reply) {
+        await require('./agent/tts')
+          .synth(reply)
+          .then((v) => sendAudio(jid, v))
+          .catch((e) => log(`resposta em voz falhou: ${e.message}`));
+      }
+    } else {
+      reply = await brain.chat(getHistory(jid));
+    }
     if (reply) {
       pushHistory(jid, 'assistant', reply);
       saveHistories();
@@ -220,6 +250,10 @@ async function connect() {
       latestQr = null;
       selfNum = jidNum(jidNormalizedUser(sock.user.id));
       log(`ligado como ${sock.user?.name || ''} (${selfNum})`);
+      if (sales && !followUpsStarted) {
+        followUpsStarted = true;
+        sales.startFollowUps({ send, getHistory, pushHistory, saveHistories, log });
+      }
     }
     if (connection === 'close') {
       const code = lastDisconnect?.error?.output?.statusCode;
@@ -309,4 +343,4 @@ async function setPaused(p) {
   saveState();
 }
 
-module.exports = { connect, send, status, setPaused, log };
+module.exports = { connect, send, sendAudio, status, setPaused, log };

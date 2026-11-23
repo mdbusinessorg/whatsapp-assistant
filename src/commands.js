@@ -15,7 +15,7 @@ const HELP = `*${config.title}* 🤖 — comandos:
 *!status* — estado do assistente
 *!nota <texto>* — definir a tua nota/rotina atual (dono)
 *!hoje* — relatório de quem falou hoje e o que queria (dono)
-
+${config.mode === 'business' ? '*!leads* — leads com score e explicação (dono)\n*!vendas* — métricas de vendas (dono)\n*!vendido <número>* / *!perdido <número>* — registar resultado (dono)\n' : ''}
 Também entendo *mensagens de voz* 🎙️ — envia um áudio e eu transcrevo e respondo.`;
 
 function jidNum(jid) {
@@ -112,6 +112,31 @@ async function handle(text, ctx) {
         .ask(`Resume em bullets quem ${config.mode === 'business' ? `contactou a ${config.businessName}` : `procurou o ${config.ownerName}`} hoje e o que cada um queria. Sê direto.\n\n${lines}`)
         .catch(() => null);
       return `📋 *Resumo de hoje*\n\n${summary || lines}`;
+    }
+    case 'leads':
+    case 'vendas':
+    case 'vendido':
+    case 'perdido': {
+      if (!owner) return '⛔ Só o dono.';
+      if (config.mode !== 'business') return 'Disponível só no modo business.';
+      const sales = require('./sales');
+      const c = cmd.toLowerCase();
+      if (c === 'vendido' || c === 'perdido') {
+        const p = sales.markOutcome(arg, c === 'vendido' ? 'won' : 'lost');
+        return p ? `✅ +${p.num} marcado como ${c}.` : 'Não encontrei esse número nos leads.';
+      }
+      const d = sales.dashboard();
+      if (c === 'vendas') {
+        return (
+          `📊 *Vendas*\nLeads: ${d.total} · Qualificados: ${d.qualified} · Quentes: ${d.hot}\n` +
+          `Vendidos: ${d.won} · Perdidos: ${d.lost} · Conversão: ${d.conversionRate}%\n` +
+          `Follow-ups: ${d.followUpsSent} · Recuperados: ${d.recovered}\n` +
+          (d.topObjections.length ? `Objeções: ${d.topObjections.map(([t, n]) => `${t} (${n})`).join(', ')}\n` : '') +
+          (d.insights.length ? `\n💡 ${d.insights.join('\n💡 ')}` : '')
+        );
+      }
+      if (!d.leads.length) return 'Ainda não há leads abertos.';
+      return '🔥 *Leads*\n\n' + d.leads.slice(0, 10).map((l) => `+${l.num}${l.name ? ` (${l.name})` : ''} — ${l.category} ${l.score}/100 · ${l.stage}${l.need ? `\n   ${l.need}` : ''}\n   ${l.reasons.slice(0, 4).join(', ')}`).join('\n\n');
     }
     case 'status':
       return (
