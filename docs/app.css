@@ -47,7 +47,7 @@ h1{font-size:40px;font-weight:500;letter-spacing:-1px;margin:4px 0 18px}
 .dateline{display:flex;flex-wrap:wrap;gap:4px;align-items:center;justify-content:space-between;border-bottom:1px solid #bdbdc1;padding-bottom:8px;margin-bottom:12px;font-size:11px;letter-spacing:.4px}
 .funnel{position:relative;display:grid;grid-template-columns:120px 1fr;row-gap:10px;font-size:11.5px;align-items:center}
 .lane{position:relative;height:30px;border-left:1px dotted #bbb}
-.bar{height:30px;min-width:min(100%,80px);max-width:100%;background:var(--ink);color:#fff;border-radius:99px;display:flex;align-items:center;justify-content:space-between;padding:0 8px;font-size:11px;cursor:pointer;transition:width .5s}
+.bar{height:30px;width:100%;border:0;border-radius:4px;background:linear-gradient(to right,#bcbcc3 var(--share),transparent var(--share));color:var(--ink);text-align:left;padding:0 4px;font:inherit;cursor:pointer}
 .faces{display:flex}
 .face{width:24px;height:24px;border-radius:50%;border:2px solid #000;margin-left:-7px;display:grid;place-items:center;font-size:9px;font-weight:700;color:#fff}
 .plus{position:absolute;top:2px;width:26px;height:26px;border-radius:50%;border:1px dashed #999;display:grid;place-items:center;color:#777;font-size:14px}

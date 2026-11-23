@@ -31,7 +31,7 @@ function renderHome() {
   const months = ['JANEIRO', 'FEVEREIRO', 'MARÇO', 'ABRIL', 'MAIO', 'JUNHO', 'JULHO', 'AGOSTO', 'SETEMBRO', 'OUTUBRO', 'NOVEMBRO', 'DEZEMBRO'], dt = new Date(NOW + 3600e3);
   const funnel = stages.map((k) => {
     const ls = open.filter((l) => l.stage === k), n = ls.length;
-    return `<div>${STAGE[k]}</div><div class="lane">${n ? `<div class="bar" style="width:${100*n/max}%" onclick="go('funnel')">${n} lead${n > 1 ? 's' : ''}</div>` : '<span class="muted">—</span>'}</div>`;
+    return `<div>${STAGE[k]}</div><div class="lane">${n ? `<button class="bar" style="--share:${100*n/max}%" onclick="go('funnel')" aria-label="${STAGE[k]}: ${n} leads">${n} lead${n > 1 ? 's' : ''}</button>` : '<span class="muted">—</span>'}</div>`;
   }).join('');
   const hot = [...open].sort((a, b) => b.score - a.score).slice(0, 4);
   const today = s.leads.filter((l) => NOW - l.createdAt < 864e5).length;
