@@ -30,9 +30,17 @@ const hash = (buf) => crypto.createHash('sha1').update(buf).digest('hex');
 async function restore() {
   if (!enabled) return;
   fs.mkdirSync(config.dataDir, { recursive: true });
-  const res = await fetch(`${url}/rest/v1/wa_files?instance=eq.${encodeURIComponent(instance)}&select=path,content`, { headers: headers() });
-  if (!res.ok) throw new Error(`restore ${res.status}: ${await res.text()}`);
-  const rows = await res.json();
+  const rows = [];
+  for (let offset = 0; ; offset += 500) {
+    const res = await fetch(
+      `${url}/rest/v1/wa_files?instance=eq.${encodeURIComponent(instance)}&select=path,content&order=path&limit=500&offset=${offset}`,
+      { headers: headers() }
+    );
+    if (!res.ok) throw new Error(`restore ${res.status}: ${await res.text()}`);
+    const page = await res.json();
+    rows.push(...page);
+    if (page.length < 500) break;
+  }
   for (const r of rows) {
     const buf = Buffer.from(r.content, 'base64');
     const file = path.join(config.dataDir, r.path);
@@ -43,10 +51,14 @@ async function restore() {
   console.log(`[sync] ${rows.length} ficheiros restaurados do Supabase (${instance})`);
 }
 
-let running = false;
-async function push() {
-  if (!enabled || running) return;
-  running = true;
+let current = null;
+function push() {
+  if (!enabled) return Promise.resolve();
+  if (!current) current = doPush().finally(() => (current = null));
+  return current;
+}
+
+async function doPush() {
   try {
     const files = listFiles(config.dataDir);
     const upserts = [];
@@ -56,6 +68,13 @@ async function push() {
         buf = fs.readFileSync(path.join(config.dataDir, rel));
       } catch {
         continue;
+      }
+      if (rel.endsWith('.json')) {
+        try {
+          JSON.parse(buf.toString('utf8'));
+        } catch {
+          continue; // ficheiro a meio de ser escrito; fica para o próximo ciclo
+        }
       }
       const h = hash(buf);
       if (known.get(rel) !== h) upserts.push({ rel, h, row: { instance, path: rel, content: buf.toString('base64'), updated_at: new Date().toISOString() } });
@@ -78,15 +97,13 @@ async function push() {
     }
   } catch (e) {
     console.error(`[sync] ${e.message}`);
-  } finally {
-    running = false;
   }
 }
 
 function start() {
   if (!enabled) return;
   setInterval(push, 20000);
-  const flush = () => push().finally(() => process.exit(0));
+  const flush = () => (current || Promise.resolve()).then(push).finally(() => process.exit(0));
   process.once('SIGTERM', flush);
   process.once('SIGINT', flush);
 }
