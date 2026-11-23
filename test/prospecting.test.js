@@ -63,3 +63,15 @@ test('resultado incerto não conta como envio nem provoca nova tentativa', async
   await campaign.onRequest({...args,jid:'003@lid'});
   assert.equal(sends,1);
 });
+
+test('apagar os dados elimina também hash e recibo do pedido, incluindo via LID', async () => {
+  const current = require('../src/sales/prospecting');
+  const profiles = require('../src/sales/profiles');
+  const jid = '456@lid', num = '244900000000';
+  profiles.get(jid).num = num;
+  await current.onRequest({text:'Quero a proposta Roque Santeiro node-0', jid, num, send:async()=>({key:{id:'recibo-apagar'}})});
+  profiles.remove(jid);
+  assert.equal(current.proposal('node-0').requestsServed,0);
+  const persisted = fs.readFileSync(path.join(dir,'roque-prospects.json'),'utf8');
+  assert.ok(!persisted.includes('recibo-apagar'));
+});

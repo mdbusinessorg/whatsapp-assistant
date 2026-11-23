@@ -45,6 +45,7 @@ const save = () => {
   fs.renameSync(FILE + '.tmp', FILE);
 };
 const remove = (jid) => {
+  require('./prospecting').forgetChat(jid, leads[jid]?.num);
   delete leads[jid];
   save();
 };

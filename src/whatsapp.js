@@ -133,7 +133,7 @@ async function handleIncoming(msg) {
 
   if (sales && text && !isGroup && !owner && !fromMe) {
     const p = sales.profiles.findByNum(senderNum);
-    if (await require('./sales/prospecting').onRequest({ text, jid, blocked: p?.optOut || p?.declined, send })) return;
+    if (await require('./sales/prospecting').onRequest({ text, jid, num: senderNum, blocked: p?.optOut || p?.declined, send })) return;
   }
 
   await sock.sendPresenceUpdate('composing', jid).catch(() => {});

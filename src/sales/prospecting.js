@@ -68,12 +68,22 @@ function list(query = '') {
 }
 
 // A pesquisa não recolhe números. O único destinatário é o chat privado que pediu este texto.
-async function onRequest({ text, jid, blocked, send }) {
+const chatKey = jid => crypto.createHash('sha256').update(jid).digest('hex');
+function forgetChat(jid, num) {
+  const keys = [chatKey(jid)];
+  if (num) keys.push(chatKey(`${num}@s.whatsapp.net`));
+  let changed = false;
+  for (const s of state.shops) for (const key of keys) {
+    if (s.requests?.[key]) { delete s.requests[key]; changed = true; }
+  }
+  if (changed) save();
+}
+async function onRequest({ text, jid, num, blocked, send }) {
   const match = /^quero a proposta roque santeiro ([a-z0-9-]{1,64})$/i.exec(text.trim());
   if (!match || !/@(s\.whatsapp\.net|lid)$/.test(jid)) return false;
   const s = find(match[1].toLowerCase());
   if (!s || blocked || s.feedback === 'dismiss') return true;
-  const key = crypto.createHash('sha256').update(jid).digest('hex');
+  const key = chatKey(num ? `${num}@s.whatsapp.net` : jid);
   s.requests ||= {};
   if (s.requests[key]) return true;
   const request = s.requests[key] = { at: Date.now(), status: 'pending' };
@@ -91,4 +101,4 @@ async function onRequest({ text, jid, blocked, send }) {
   return true;
 }
 
-module.exports = { status, discover, feedback, proposal, list, onRequest };
+module.exports = { status, discover, feedback, proposal, list, onRequest, forgetChat };
