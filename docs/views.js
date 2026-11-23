@@ -29,10 +29,9 @@ function renderHome() {
   const s = S(), on = online(), leads = s.leads.filter(inRange), open = leads.filter((l) => l.status === 'open');
   const stages = Object.keys(STAGE), max = Math.max(1, ...stages.map((k) => open.filter((l) => l.stage === k).length));
   const months = ['JANEIRO', 'FEVEREIRO', 'MARÇO', 'ABRIL', 'MAIO', 'JUNHO', 'JULHO', 'AGOSTO', 'SETEMBRO', 'OUTUBRO', 'NOVEMBRO', 'DEZEMBRO'], dt = new Date(NOW + 3600e3);
-  const funnel = stages.map((k, i) => {
+  const funnel = stages.map((k) => {
     const ls = open.filter((l) => l.stage === k), n = ls.length;
-    const left = i * 8, width = n ? 16 + (n / max) * 30 : 0;
-    return `<div>${STAGE[k]}</div><div class="lane">${n ? `<div class="bar" style="left:${left}%;width:${width}%" onclick="go('funnel')">${n} lead${n > 1 ? 's' : ''}<span class="faces">${ls.slice(0, 3).map(face).join('')}</span></div>` : `<span class="muted small" style="position:absolute;left:${left}%;top:8px">—</span>`}${n && ls.some((l) => ['hot', 'ready'].includes(l.category)) ? `<span class="plus" style="left:calc(${left + width}% + 8px)" title="Tem leads quentes">+</span>` : ''}</div>`;
+    return `<div>${STAGE[k]}</div><div class="lane">${n ? `<button class="bar" style="--share:${100*n/max}%" onclick="go('funnel')" aria-label="${STAGE[k]}: ${n} leads">${n} lead${n > 1 ? 's' : ''}</button>` : '<span class="muted">—</span>'}</div>`;
   }).join('');
   const hot = [...open].sort((a, b) => b.score - a.score).slice(0, 4);
   const today = s.leads.filter((l) => NOW - l.createdAt < 864e5).length;
@@ -41,12 +40,11 @@ function renderHome() {
   const obj = s.topObjections.slice(0, 3), omax = Math.max(1, ...obj.map((o) => o[1]));
   $('v-home').innerHTML = `
   <h1>CRM</h1>
-  <div class="grid">
+  <div class="grid home-grid">
     <div class="plain">
       <div class="dateline"><span>▢ ${dt.getUTCDate()} ${months[dt.getUTCMonth()]} ${dt.getUTCFullYear()} ➤</span>
         <div class="tabs">${[['day', 'Dia'], ['week', 'Semana'], ['month', 'Mês'], ['all', 'Tudo']].map(([k, t]) => `<button class="${range === k ? 'on' : ''}" onclick="range='${k}';render()">${t}</button>`).join('')}</div></div>
       <div class="funnel">${funnel}</div>
-      <div class="axis"><span>Entrada</span><span>Descoberta</span><span>Proposta</span><span>Objeções</span><span>Fecho</span><span>Pós-venda</span></div>
     </div>
     <div class="card">
       <div class="row between"><b style="font-weight:500">Funil de vendas</b><span>▪▪</span></div>
@@ -82,7 +80,7 @@ function renderHome() {
           <div class="row small" style="margin-top:12px;gap:18px"><span>💬 ${open.reduce((n, l) => n + l.messages, 0)}</span><span>↻ ${s.followUpsSent}</span></div></div>
         <div><b style="font-weight:500">Objeções</b><div class="small muted">As mais frequentes</div>
           ${obj.length ? obj.map(([k, n]) => `<div class="row between small" style="margin-top:14px"><span>${OBJ[k] || k}</span><span>${n}</span></div><div class="prog"><i style="width:${(n / omax) * 100}%"></i></div>`).join('') : '<div class="small muted" style="margin-top:18px">Sem objeções registadas</div>'}</div>
-        <div><b style="font-weight:500">Categorias</b><div class="bars" style="margin-top:18px">${cats.map((c) => `<div style="height:${8 + ((s.categories[c] || 0) / cmax) * 100}px" title="${CAT[c]}: ${s.categories[c] || 0}"><span>${(CAT[c] || c).split(' ')[0]} ${s.categories[c] || 0}</span></div>`).join('')}</div></div>
+        <div><b style="font-weight:500">Categorias</b>${cats.map((c) => `<div class="row between small"><span>${CAT[c]}</span><b>${s.categories[c] || 0}</b></div><div class="prog"><i style="width:${100*(s.categories[c] || 0)/cmax}%"></i></div>`).join('')}</div>
       </div>
     </div>
   </div>`;
