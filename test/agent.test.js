@@ -241,3 +241,13 @@ test('uma recusa repetida por objeção prevalece sobre a compra entre as duas r
   assert.ok(old.declinedAt>20);
   assert.ok(profiles.contactBlocked(n,phone));
 });
+test('rejeitar um plano e pedir outro não é recusar o atendimento', async t => {
+  const n='244900079993', jid=n+'@s.whatsapp.net';
+  const text='Não quero o plano premium; quero avançar com o básico.';
+  t.mock.method(require('../src/sales/analyzer'),'analyze',async () => ({intent:'purchase'}));
+  t.mock.method(require('../src/brain'),'complete',async () => 'Vamos tratar do plano básico.');
+  const r=await require('../src/sales').respond({jid,num:n,text,history:[{role:'user',content:text}]});
+  assert.equal(r.plan.action,'close');
+  assert.ok(!profiles.contactBlocked(n,jid));
+  assert.ok(require('../src/sales/signals').detect('Não quero, obrigado.').objections.some(o=>o.type==='not_interested'));
+});
