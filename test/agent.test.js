@@ -119,3 +119,18 @@ test('uma ordem mista executa todas as ferramentas sem expor fichas ao modelo', 
     assert.doesNotMatch(contexts.join(''),/Etiqueta externa de teste/);
   } finally { api.create = original; paused = false; }
 });
+
+test('duas pesquisas na mesma ordem conservam todas as fichas na selecção do CRM', async t => {
+  const dir = require('../src/sales/shop-directory');
+  t.mock.method(dir, 'shops', async () => [
+    {id:'node-980',name:'Loja A',tag:'clothes'}, {id:'node-981',name:'Loja B',tag:'books'}]);
+  const api = require('../src/brain').groq.chat.completions;
+  t.mock.method(api, 'create', async () => ({choices:[{message:{tool_calls:['Moda','Papelaria'].map((sector,i) =>
+    ({id:'s'+i,type:'function',function:{name:'discover_shops',arguments:JSON.stringify({sector})}}))}}]}));
+  await core.run('Procura lojas de moda e papelarias');
+  const { shops, filter } = core.status().prospecting;
+  assert.deepEqual(shops.map(s => s.id), ['node-980','node-981']);
+  assert.equal(filter,'Moda / Papelaria');
+  await core.run('Pesquisar lojas: moda');
+  assert.deepEqual(core.status().prospecting.shops, []);
+});

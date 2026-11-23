@@ -26,7 +26,7 @@ function tool(name, description, props, required, run) {
   T[name] = { name, description, parameters: { type: 'object', properties: props, required }, run };
 }
 
-tool('discover_shops', 'Descobre até três novas lojas reais em Angola para o Roque Santeiro, sem enviar mensagens. Sem sector = todas. Aceita grupo em português ou tag shop do OpenStreetMap.', { sector: { type: 'string' } }, [], a => prospecting().discover(a.sector));
+tool('discover_shops', 'Descobre até três novas lojas reais em Angola para o Roque Santeiro, sem enviar mensagens. Sem sector = todas. Aceita grupo em português ou tag shop do OpenStreetMap.', { sector: { type: 'string' } }, [], (a, selection) => prospecting().discover(a.sector, undefined, selection));
 tool('list_shops', 'Procura lojas já prospectadas pelo nome, ramo ou ID.', { query: { type: 'string' } }, [], a => prospecting().list(a.query));
 tool('shop_proposal', 'Consulta o rascunho, ramo e fonte de uma loja já prospectada. NÃO envia.', { id: { type: 'string' } }, ['id'], a => prospecting().proposal(a.id));
 tool('rate_shop', 'Regista a avaliação do dono para melhorar a ordem de futuras pesquisas. Não infere interesse da loja.', { id: { type: 'string' }, value: { type: 'string', enum: ['relevant','dismiss','neutral'] } }, ['id','value'], a => prospecting().feedback(a.id, a.value));

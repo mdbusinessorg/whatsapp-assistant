@@ -45,7 +45,7 @@ async function callModel(messages) {
   throw last;
 }
 
-async function execute(name, args, instruction, approved = false) {
+async function execute(name, args, instruction, approved = false, selection) {
   const t = T[name];
   if (!t) return { status: 'failed', error: `ferramenta desconhecida: ${name}` };
   const lvl = permissions.level(name);
@@ -58,7 +58,7 @@ async function execute(name, args, instruction, approved = false) {
   }
   const t0 = Date.now();
   try {
-    const result = await t.run(args || {});
+    const result = await t.run(args || {}, selection);
     const verified = result?.verified !== false;
     audit.record({ instruction, tool: name, args, level: lvl, status: verified ? 'completed' : 'unverified', ms: Date.now() - t0, result: JSON.stringify(result).slice(0, 600), approved });
     return { status: verified ? 'completed' : 'unverified', result };
@@ -142,6 +142,7 @@ async function runInner(text) {
   }
   S.memory.push({ role: 'user', content: text });
   const ownerResults = [];
+  const selection = require('../sales/prospecting').newSelection();
   const replyWith = text => [...ownerResults, text].filter(Boolean).join('\n\n');
   for (let i = 0; i < 8; i++) {
     const msg = await callModel([{ role: 'system', content: SYSTEM() }, ...S.memory]);
@@ -157,7 +158,7 @@ async function runInner(text) {
       try {
         args = JSON.parse(c.function.arguments || '{}');
       } catch {}
-      const r = await execute(c.function.name, args, text);
+      const r = await execute(c.function.name, args, text, false, selection);
       let content;
       if (directoryTools.has(c.function.name)) {
         const result = directoryResult(c.function.name, r);

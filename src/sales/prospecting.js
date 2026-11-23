@@ -31,7 +31,8 @@ async function refreshSectors(load = directory.shops) {
   if (JSON.stringify(next) !== JSON.stringify(state.sectors)) { state.sectors = next; save(); }
 }
 
-async function discover(filter = '', load = directory.shops) {
+const newSelection = () => ({ filters: new Set(), ids: [] });
+async function discover(filter = '', load = directory.shops, selection = newSelection()) {
   const key = fold(filter);
   const all = ['', 'all', 'todas', 'todas as lojas'].includes(key);
   const entries = await load();
@@ -58,8 +59,10 @@ async function discover(filter = '', load = directory.shops) {
   }
   select(all); select(false);
   state.shops.push(...chosen);
-  state.filter = all ? '' : String(filter);
-  state.selected = chosen.map(s => s.id);
+  selection.filters.add(all ? '' : String(filter));
+  selection.ids.push(...chosen.map(s => s.id));
+  state.filter = selection.filters.has('') ? '' : [...selection.filters].join(' / ');
+  state.selected = [...selection.ids];
   state.sectors = tags(entries);
   save();
   return { count: chosen.length, shops: chosen.map(summary), sent: 0 };
@@ -115,4 +118,4 @@ async function onRequest({ text, jid, num, blocked, send }) {
   return true;
 }
 
-module.exports = { status, discover, refreshSectors, feedback, proposal, list, onRequest, forgetChat, containsDraft };
+module.exports = { status, discover, newSelection, refreshSectors, feedback, proposal, list, onRequest, forgetChat, containsDraft };
