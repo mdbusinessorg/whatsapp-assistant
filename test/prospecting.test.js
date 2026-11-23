@@ -12,6 +12,11 @@ const permissions = require('../src/agent/permissions');
 const catalog = ['clothes','clothes','furniture','computer','books','hairdresser','clothes','computer','gifts'].map((tag,i) =>
   ({ id: 'node-'+i, name: 'Loja de teste '+i, tag, source: 'https://www.openstreetmap.org/node/'+i, region: 'Luanda' }));
 const load = async () => catalog;
+test('o directório rejeita imóveis vazios e fichas não comerciais', () => {
+  const { isRetail } = require('../src/sales/shop-directory');
+  for (const tag of ['vacant','no','closed','abandoned',null]) assert.equal(isRetail(tag),false);
+  for (const tag of ['computer','gifts','mobile_phone']) assert.equal(isRetail(tag),true);
+});
 
 test('todas por defeito, resultados de ramos diferentes, sem envios', async () => {
   const r = await campaign.discover(undefined,load);
