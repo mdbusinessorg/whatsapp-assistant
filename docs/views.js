@@ -1,4 +1,5 @@
 function online() { return ROW && NOW - Date.parse(ROW.updated_at) < 150000; }
+function connectionLabel() { return !online() ? 'Servidor offline' : !D?.connected ? 'À espera do QR' : D.paused ? 'Em pausa' : 'Ligado'; }
 function S() { return D?.sales || { leads: [], pending: [], stages: {}, categories: {}, topObjections: [], topProducts: [], insights: [], total: 0, qualified: 0, hot: 0, won: 0, lost: 0, conversionRate: 0, followUpsSent: 0, recovered: 0 }; }
 function spark(vals, w = 170, h = 60, color = '#111') {
   const max = Math.max(1, ...vals), step = w / Math.max(1, vals.length - 1);
@@ -12,10 +13,14 @@ function perDay(leads, key, days = 14) {
   return out;
 }
 function render() {
-  $('nav').innerHTML = NAV.map(([k, t]) => `<a class="${view === k ? 'on' : ''}" onclick="go('${k}')">${svg(k)}<span>${t}</span></a>`).join('');
-  const s = S(), on = online();
+  nav.querySelectorAll('[data-view]').forEach(b => {
+    if (b.dataset.view === view) b.setAttribute('aria-current', 'page');
+    else b.removeAttribute('aria-current');
+  });
+  more.classList.toggle('on', SECONDARY.some(([k]) => k === view));
+  const s = S();
   $('wa-ic').innerHTML = svg('cam');
-  $('wa-txt').innerHTML = `<b>${on ? (D.connected ? 'Ligado' : 'À espera do QR') : 'Servidor offline'}</b><br><span class="muted">${D?.paused ? 'Em pausa' : 'A responder'}</span>`;
+  $('wa-txt').innerHTML = `<span class="small">WhatsApp</span><br><b>${connectionLabel()}</b>`;
   $('s-ic').innerHTML = svg('search');
   $('bell').innerHTML = svg('bell') + (s.pending.length ? `<span class="badge">${s.pending.length}</span>` : '');
   $('mail').innerHTML = svg('mail') + (s.hot ? `<span class="badge">+${s.hot}</span>` : '');
@@ -39,7 +44,7 @@ function renderHome() {
   const pendPct = open.length ? Math.round((s.pending.length / open.length) * 100) : 0;
   const obj = s.topObjections.slice(0, 3), omax = Math.max(1, ...obj.map((o) => o[1]));
   $('v-home').innerHTML = `
-  <h1>CRM</h1>
+  <h1>Painel</h1>
   <div class="grid home-grid">
     <div class="plain">
       <div class="dateline"><span>▢ ${dt.getUTCDate()} ${months[dt.getUTCMonth()]} ${dt.getUTCFullYear()} ➤</span>
@@ -58,7 +63,7 @@ function renderHome() {
       <div class="row">${svg('file').replace('<svg', '<svg style="width:16px"')} <b style="font-weight:500">WhatsApp Business</b></div>
       ${D?.qr && on ? `<img class="qr" src="${D.qr}" alt="QR">` : `<div class="orb ${on && D?.connected ? '' : 'off'}"></div>`}
       <div class="small">${D?.qr && on ? 'Escaneia: Aparelhos ligados → Ligar aparelho' : D?.selfNum ? '+' + esc(D.selfNum) : 'Sem sessão'}</div>
-      <div class="small muted">${on ? (D.connected ? 'Online' : 'À espera do QR') : 'Servidor offline'} · ${D?.paused ? 'em pausa' : 'a responder'}</div>
+      <div class="small muted">${connectionLabel()}</div>
       <div class="hr"></div>
       <div class="row between"><span class="row small"><span class="face" style="background:#333;margin:0">MD</span> MD Business</span>
       <button class="btn l" style="padding:6px 14px" onclick="cmd('toggle')">${D?.paused ? '▶ Retomar' : '⏸ Pausar'}</button></div>
