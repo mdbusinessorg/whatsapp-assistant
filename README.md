@@ -51,3 +51,54 @@ Depois abre `https://whatsapp-assistant-mdm.fly.dev/?token=WEB_TOKEN` e escaneia
 | `CHAT_MODEL` / `WHISPER_MODEL` | modelos Groq |
 | `SYSTEM_PROMPT` | personalidade do assistente |
 | `DATA_DIR` | onde guardar auth/state/reminders |
+
+## Modo Business (atendimento ao cliente)
+
+Mesma base de código, segunda app Fly com `ASSISTANT_MODE=business` (ver `fly.business.toml`):
+
+- Responde como assistente virtual da empresa (`BUSINESS_NAME`, default "MD Business"), usando só a info de `context/business.txt` (serviços, planos, preços, pagamentos) — editável no painel.
+- Qualifica o pedido (nome, negócio, o que pretende, prazo, orçamento).
+- Pedidos de orçamento/contratação ou de falar com uma pessoa → aviso "Novo cliente" ao `OWNER_NUMBER` com o resumo da conversa e link wa.me (no máx. 1 aviso por cliente a cada 6h). Urgências também avisam o dono.
+
+```bash
+flyctl apps create whatsapp-business-mdm
+flyctl volumes create wa_biz_data --size 1 --region gru -c fly.business.toml
+flyctl secrets set GROQ_API_KEY=... WEB_TOKEN=... -c fly.business.toml
+flyctl deploy -c fly.business.toml
+```
+
+## Pessoal + Business num só serviço (hosts sem disco, ex.: Render free)
+
+`src/multi.js` arranca vários assistentes no mesmo container, cada um no seu caminho (`/pessoal/`, `/business/`).
+Variáveis com prefixo do nome (ex.: `BUSINESS_OWNER_NUMBER`) só se aplicam a essa instância.
+
+```
+INSTANCES=pessoal:personal,business:business
+BUSINESS_OWNER_NUMBER=244926115429   # quem recebe os avisos de novos clientes
+GROQ_API_KEY=...  WEB_TOKEN=...
+SUPABASE_URL=https://<proj>.supabase.co  SUPABASE_SERVICE_KEY=...   # guarda a sessão WhatsApp (não perde o QR)
+```
+
+Tabela no Supabase:
+
+```sql
+create table public.wa_files (instance text not null, path text not null, content text not null,
+  updated_at timestamptz not null default now(), primary key (instance, path));
+alter table public.wa_files enable row level security;
+```
+
+O serviço faz ping a si próprio (`RENDER_EXTERNAL_URL`/`KEEPALIVE_URL`) a cada 10 min para não adormecer.
+
+## Alojamento grátis: GitHub Actions + painel no GitHub Pages
+
+- `.github/workflows/worker.yml` corre `src/multi.js` (pessoal + business) em turnos de ~6h; cada turno agenda o seguinte (concorrência `wa-worker`) e um cron de 20 min serve de watchdog. Repo público = minutos ilimitados.
+- Secrets do repo: `GROQ_API_KEY`, `WEB_TOKEN`, `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, `BUSINESS_OWNER_NUMBER`.
+- `src/remote.js` publica estado/QR/log em `wa_panel` e executa comandos (`toggle`, `context`, `send`) de `wa_cmds`.
+- Painel: `docs/index.html` (GitHub Pages) → edge function `wa-panel` (`supabase functions deploy wa-panel --no-verify-jwt`, secret `WA_PANEL_TOKEN` = `WEB_TOKEN`).
+
+```sql
+create table public.wa_panel (instance text primary key, data jsonb not null, updated_at timestamptz not null default now());
+create table public.wa_cmds (id bigserial primary key, instance text not null, cmd text not null, arg text, created_at timestamptz not null default now());
+alter table public.wa_panel enable row level security;
+alter table public.wa_cmds enable row level security;
+```

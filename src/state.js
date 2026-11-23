@@ -15,6 +15,7 @@ const defaults = {
   ownerNote: '', // última nota/rotina deixada pelo dono
   ownerNoteAt: 0,
   pendingUrgent: {}, // jid -> ts de pedido urgente à espera do dono
+  leadsNotified: {}, // jid -> ts do último aviso de novo cliente ao dono (modo business)
 };
 
 function readJson(file, fallback) {

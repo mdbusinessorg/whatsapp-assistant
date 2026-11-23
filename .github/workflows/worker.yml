@@ -1,0 +1,36 @@
+name: whatsapp-worker
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '*/20 * * * *'
+concurrency:
+  group: wa-worker
+  cancel-in-progress: false
+permissions:
+  actions: write
+  contents: read
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 358
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci --omit=dev --no-audit --no-fund
+      - name: Agendar o próximo turno (fica em espera até este acabar)
+        run: gh workflow run worker.yml --ref "${{ github.ref_name }}"
+        env:
+          GH_TOKEN: ${{ github.token }}
+      - name: Assistentes
+        run: timeout -s TERM 350m node src/multi.js || true
+        env:
+          INSTANCES: pessoal:personal,business:business
+          DATA_DIR: ${{ runner.temp }}/data
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          WEB_TOKEN: ${{ secrets.WEB_TOKEN }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          BUSINESS_OWNER_NUMBER: ${{ secrets.BUSINESS_OWNER_NUMBER }}
