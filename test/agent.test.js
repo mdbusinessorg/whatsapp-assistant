@@ -92,3 +92,9 @@ test('o modelo privilegiado não recebe nomes, rascunhos nem resultados externos
     assert.doesNotMatch(contexts.join(''), /Etiqueta externa de teste/);
   } finally { api.create = original; }
 });
+test('mensagem logística não é confundida com o rascunho da campanha', async () => {
+  const recipient = '244911111111';
+  const proposal = require('../src/sales/prospecting').proposal('node-910').proposal;
+  assert.equal((await core.execute('send_message',{num:recipient,text:'A recolha é na rua do Roque Santeiro.'},'envia')).status,'completed');
+  assert.equal((await core.execute('send_message',{num:recipient,text:proposal},'envia')).status,'failed');
+});

@@ -72,7 +72,7 @@ tool('list_pending', 'Clientes pendentes: interessados que não responderam à �
 });
 
 async function sendTo(n, text) {
-  if (num(n) !== config.ownerNumber && /roque[\s-]+santeiro/i.test(text)) throw new Error('A proposta da campanha só é enviada em resposta ao pedido da loja no próprio WhatsApp.');
+  if (num(n) !== config.ownerNumber && prospecting().containsDraft(text)) throw new Error('A proposta da campanha só é enviada em resposta ao pedido da loja no próprio WhatsApp.');
   const jid = jidOf(n);
   const res = await wa().send(jid, text);
   st.pushHistory(jid, 'assistant', text);

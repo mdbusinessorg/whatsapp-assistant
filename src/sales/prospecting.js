@@ -17,6 +17,10 @@ const find = id => state.shops.find(s => s.id === id);
 const draft = s => s.proposal || `Bom dia, equipa ${s.name}. Sou o Matias Domingos, da MD Business. Gostaríamos de convidar a vossa loja a apresentar uma pequena selecção de produtos no Roque Santeiro, um mercado digital para lojas angolanas. Podemos mostrar-vos como ficaria a vossa montra com três artigos à vossa escolha?\n\nDemonstração: https://roque-santeiro-express.netlify.app/\nMatias Domingos | MD Business`;
 const summary = s => ({ id: s.id, name: s.name, sector: sector(s.tag), region: s.region, source: s.source,
   proposal: draft(s), feedback: s.feedback || '', requestsServed: Object.values(s.requests || {}).filter(v => v.status === 'accepted').length });
+function containsDraft(text) {
+  const normalized = fold(text).replace(/\s+/g, ' ');
+  return normalized.includes('roque santeiro') && state.shops.some(s => normalized.includes(fold(draft(s)).replace(/\s+/g, ' ')));
+}
 const status = () => ({ filter: state.filter, shops: state.selected.map(find).filter(Boolean).map(summary),
   sectors: [...new Set([...Object.keys(directory.groups), ...state.sectors])].sort((a, b) => a.localeCompare(b, 'pt')) });
 
@@ -101,4 +105,4 @@ async function onRequest({ text, jid, num, blocked, send }) {
   return true;
 }
 
-module.exports = { status, discover, feedback, proposal, list, onRequest, forgetChat };
+module.exports = { status, discover, feedback, proposal, list, onRequest, forgetChat, containsDraft };
