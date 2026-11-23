@@ -61,7 +61,7 @@ tool('update_lead', 'Actualiza a ficha de um cliente: nome, prioridade, nota, es
   if (a.priority != null) p.priority = a.priority;
   if (a.note) p.notes = [...(p.notes || []), { at: Date.now(), text: a.note }].slice(-20);
   if (a.stop_contact != null) p.optOut = a.stop_contact;
-  if (a.new_num) p.num = num(a.new_num);
+  if (a.new_num) sales().profiles.editNumber(p, num(a.new_num));
   if (a.status) sales().markOutcome(p.num, a.status);
   sales().profiles.save();
   const after = sales().profiles.findByNum(p.num);

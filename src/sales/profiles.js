@@ -54,6 +54,12 @@ const chatNumber = p => {
   const m = /^(\d+)(?::\d+)?@(s\.whatsapp\.net|lid)$/.exec(p.jid);
   return m && (m[2] === 'lid' ? p.inboundNum : m[1]);
 };
+// Nos LID antigos o número guardado só pode bloquear contacto, nunca autorizá-lo.
+const suppressionNumber = p => chatNumber(p) || (/^\d+(?::\d+)?@lid$/.test(p.jid) ? (p.legacyNum ?? p.num) : '');
+const editNumber = (p, num) => {
+  if (p.legacyNum == null && !chatNumber(p)) p.legacyNum = p.num;
+  p.num = num;
+};
 const inboundByNum = (num, jid) => {
   const n = String(num || '').replace(/\D/g, '');
   const candidates = jid == null ? all() : [leads[jid]];
@@ -61,7 +67,7 @@ const inboundByNum = (num, jid) => {
 };
 const contactBlocked = (num, jid) => {
   const n = String(num || '').replace(/\D/g, '');
-  return all().some(p => (p.optOut || p.declined) && (p.jid === jid || (n && (p.num === n || chatNumber(p) === n))));
+  return all().some(p => (p.optOut || p.declined) && (p.jid === jid || (n && suppressionNumber(p) === n)));
 };
 
 // Resumo compacto para o prompt (em vez de reenviar tudo)
@@ -84,4 +90,4 @@ function summary(p) {
     .join('\n');
 }
 
-module.exports = { get, all, save, remove, findByNum, inboundByNum, chatNumber, contactBlocked, summary, blank };
+module.exports = { get, all, save, remove, findByNum, inboundByNum, chatNumber, editNumber, contactBlocked, summary, blank };

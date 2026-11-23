@@ -189,3 +189,15 @@ test('um filtro não pode redireccionar o envio a outro cliente com o mesmo núm
   }
   assert.equal(sent.length,before);
 });
+test('editar um número nunca transfere a recusa para outro cliente', async () => {
+  for (const [i, suffix] of ['@s.whatsapp.net', '@lid'].entries()) {
+    const old = '24490007000'+i, other = '24490007001'+i;
+    const blocked = lead(old+suffix, {num:old,optOut:true,lastCustomerAt:1});
+    const permitted = lead(other+'@s.whatsapp.net', {num:other,lastCustomerAt:1});
+    await core.execute('update_lead',{num:old,new_num:other},'actualiza');
+    assert.equal(blocked.num,other);
+    assert.ok(profiles.contactBlocked(old, old+'@s.whatsapp.net'));
+    assert.ok(!profiles.contactBlocked(other, permitted.jid));
+    assert.ok((await require('../src/sales/service-messages').send(other,'entrega')).verified);
+  }
+});
