@@ -201,3 +201,20 @@ test('editar um número nunca transfere a recusa para outro cliente', async () =
     assert.ok((await require('../src/sales/service-messages').send(other,'entrega')).verified);
   }
 });
+test('novo pedido de compra supera a recusa comercial antiga, mas nunca um opt-out', async t => {
+  const n='244900079990', jid=n+'@s.whatsapp.net';
+  const old = lead('990079990@lid',{num:n,inboundNum:n,declined:true,lastCustomerAt:10});
+  lead(jid,{num:n,lastCustomerAt:20});
+  const service = require('../src/sales/service-messages');
+  await assert.rejects(service.send(n,'entrega'),/não ser contactado/);
+  const text = 'Quero avançar';
+  t.mock.method(require('../src/sales/analyzer'),'analyze',async () => ({intent:'purchase'}));
+  t.mock.method(require('../src/brain'),'complete',async () => 'Qual é o produto?');
+  const {profile} = await require('../src/sales').respond({jid,num:n,text,history:[{role:'user',content:text}]});
+  assert.ok((await service.send(n,'entrega')).verified);
+  assert.equal(sent.at(-1).jid,jid);
+  old.optOut=true;
+  await assert.rejects(service.send(n,'entrega'),/não ser contactado/);
+  old.optOut=false; old.declinedAt=profile.renewedInterestAt+1;
+  await assert.rejects(service.send(n,'entrega'),/não ser contactado/);
+});

@@ -63,11 +63,15 @@ const editNumber = (p, num) => {
 const inboundByNum = (num, jid) => {
   const n = String(num || '').replace(/\D/g, '');
   const candidates = jid == null ? all() : [leads[jid]];
-  return n && candidates.find(p => p && p.num === n && p.lastCustomerAt && chatNumber(p) === n);
+  return n && candidates.filter(p => p && p.num === n && p.lastCustomerAt && chatNumber(p) === n)
+    .sort((a, b) => b.lastCustomerAt - a.lastCustomerAt)[0];
 };
 const contactBlocked = (num, jid) => {
   const n = String(num || '').replace(/\D/g, '');
-  return all().some(p => (p.optOut || p.declined) && (p.jid === jid || (n && suppressionNumber(p) === n)));
+  const current = leads[jid];
+  const renewedAt = current && chatNumber(current) === n ? current.renewedInterestAt || 0 : 0;
+  return all().some(p => (p.jid === jid || (n && suppressionNumber(p) === n)) &&
+    (p.optOut || (p.declined && (p.jid === jid || (p.declinedAt ?? p.lastCustomerAt ?? 0) >= renewedAt))));
 };
 
 // Resumo compacto para o prompt (em vez de reenviar tudo)

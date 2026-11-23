@@ -48,8 +48,13 @@ function merge(p, a, det, text) {
   p.buyingSignals += det.buyingSignals + (a.intent === 'purchase' ? 1 : 0);
   if (a.style) p.style = a.style;
   if (det.optOut) p.optOut = true;
-  if (det.optOut || a.declined || a.intent === 'decline') p.declined = true;
-  else if (det.buyingSignals || a.intent === 'purchase' || a.intent === 'quote') p.declined = false;
+  if (det.optOut || a.declined || a.intent === 'decline') {
+    p.declined = true;
+    p.declinedAt = p.lastCustomerAt;
+  } else if (det.buyingSignals || a.intent === 'purchase' || a.intent === 'quote') {
+    p.declined = false;
+    p.renewedInterestAt = p.lastCustomerAt;
+  }
 }
 
 function fallbackAnalysis(det) {
@@ -91,7 +96,10 @@ async function respond({ jid, num, name, text, history }) {
   const pol = { ...policy.get(), ...(p.override || {}) }; // o dono pode dar limites por cliente (ex.: desconto máx.)
   const pl = strategy.plan(p, a, det, pol);
   if (p.managed) pl.directives.push(`O dono atribuiu-te este cliente: objectivo "${p.managed.goal || 'concluir a venda'}". Conduz até fechar, recusar ou pedir humano.`);
-  if (pl.action === 'respect_decline' && !p.declined && a.objection?.type === 'not_interested') p.declined = true;
+  if (pl.action === 'respect_decline' && !p.declined && a.objection?.type === 'not_interested') {
+    p.declined = true;
+    p.declinedAt = p.lastCustomerAt;
+  }
 
   const context = readContext();
   const system = [
