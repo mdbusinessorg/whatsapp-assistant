@@ -22,7 +22,13 @@ function containsDraft(text) {
   return normalized.includes('roque santeiro') && state.shops.some(s => normalized.includes(fold(draft(s)).replace(/\s+/g, ' ')));
 }
 const status = () => ({ filter: state.filter, shops: state.selected.map(find).filter(Boolean).map(summary),
-  sectors: [...new Set([...Object.keys(directory.groups), ...state.sectors])].sort((a, b) => a.localeCompare(b, 'pt')) });
+  sectors: [...new Set([...Object.keys(directory.groups), ...Object.values(directory.groups).flat(), ...state.sectors.filter(directory.isRetail)])].sort((a, b) => a.localeCompare(b, 'pt')) });
+
+const tags = entries => [...new Set(entries.map(s => s.tag))].sort();
+async function refreshSectors(load = directory.shops) {
+  const next = tags(await load());
+  if (JSON.stringify(next) !== JSON.stringify(state.sectors)) { state.sectors = next; save(); }
+}
 
 async function discover(filter = '', load = directory.shops) {
   const key = fold(filter);
@@ -50,7 +56,7 @@ async function discover(filter = '', load = directory.shops) {
   state.shops.push(...chosen);
   state.filter = all ? '' : String(filter);
   state.selected = chosen.map(s => s.id);
-  state.sectors = [...new Set(entries.map(s => sector(s.tag)))];
+  state.sectors = tags(entries);
   save();
   return { count: chosen.length, shops: chosen.map(summary), sent: 0 };
 }
@@ -105,4 +111,4 @@ async function onRequest({ text, jid, num, blocked, send }) {
   return true;
 }
 
-module.exports = { status, discover, feedback, proposal, list, onRequest, forgetChat, containsDraft };
+module.exports = { status, discover, refreshSectors, feedback, proposal, list, onRequest, forgetChat, containsDraft };

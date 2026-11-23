@@ -2,6 +2,9 @@ const sync = require('./sync');
 
 async function main() {
   await sync.restore();
+  if (require('./config').mode === 'business') {
+    require('./sales/prospecting').refreshSectors().catch(e => console.warn(`[directório] ${e.message}`));
+  }
   const wa = require('./whatsapp');
   const web = require('./web');
   web.start();

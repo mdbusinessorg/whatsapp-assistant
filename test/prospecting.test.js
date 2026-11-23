@@ -12,6 +12,14 @@ const permissions = require('../src/agent/permissions');
 const catalog = ['clothes','clothes','furniture','computer','books','hairdresser','clothes','computer','gifts'].map((tag,i) =>
   ({ id: 'node-'+i, name: 'Loja de teste '+i, tag, source: 'https://www.openstreetmap.org/node/'+i, region: 'Luanda' }));
 const load = async () => catalog;
+test('o CRM oferece grupos e categorias individuais antes de prospectar', async () => {
+  assert.ok(campaign.status().sectors.includes('computer'));
+  await campaign.refreshSectors(load);
+  const { sectors, shops, filter } = campaign.status();
+  for (const option of ['Tecnologia','computer','gifts']) assert.ok(sectors.includes(option));
+  assert.deepEqual(shops,[]);
+  assert.equal(filter,'');
+});
 test('o directório rejeita imóveis vazios e fichas não comerciais', () => {
   const { isRetail } = require('../src/sales/shop-directory');
   for (const tag of ['vacant','no','closed','abandoned',null]) assert.equal(isRetail(tag),false);
