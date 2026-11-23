@@ -101,3 +101,14 @@ test('uma loja de vários ramos aparece em qualquer dos filtros sem duplicação
     assert.equal((await campaign.discover('Moda',load)).count,0);
   }
 });
+
+test('num filtro, um ramo alheio não altera a prioridade da loja mista', async () => {
+  const shop = (id, tag) => ({ ...catalog[0], id:`way-${id}`, name:`Loja de ensaio ${id}`, tag });
+  await campaign.discover('sports', async () => [shop(800,'sports')]);
+  campaign.feedback('way-800','dismiss');
+  for (const [i, filter] of ['sports','Desporto'].entries()) {
+    const first = shop(801 + 2*i,'sports'), mixed = shop(802 + 2*i,'sports;fabric');
+    const r = await campaign.discover(filter, async () => [first,mixed]);
+    assert.deepEqual(r.shops.map(s => s.id), [first.id,mixed.id]);
+  }
+});

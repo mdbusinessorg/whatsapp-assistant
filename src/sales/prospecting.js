@@ -43,10 +43,10 @@ async function discover(filter = '', load = directory.shops, selection = newSele
     for (const category of sectorsOf(s)) weights.set(category, (weights.get(category) || 0) + ({ relevant: 1, dismiss: -1 }[s.feedback] || 0));
   }
   const candidates = entries.map(shop => {
-    const tags = retailTags(shop.tag), sectors = [...new Set(tags.map(sector))];
-    return { shop, sectors, matches: all || [...tags, ...sectors].some(v => fold(v) === key),
-      weight: Math.max(...sectors.map(v => weights.get(v) || 0)) };
-  }).filter(c => c.matches && c.sectors.length);
+    const matched = retailTags(shop.tag).filter(t => all || fold(t) === key || fold(sector(t)) === key);
+    const sectors = [...new Set(matched.map(sector))];
+    return { shop, sectors, weight: Math.max(...sectors.map(v => weights.get(v) || 0)) };
+  }).filter(c => c.sectors.length);
   candidates.sort((a,b) => b.weight - a.weight);
   const chosen = [], used = new Set();
   function select(diversify) {
