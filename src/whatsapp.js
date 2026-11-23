@@ -203,7 +203,7 @@ async function handleIncoming(msg) {
         }
       }
     } else if (agent && owner && !isGroup) {
-      reply = await agent.run(userText);
+      reply = await agent.run(userText, audio ? 'voz' : 'whatsapp');
       if (audio && reply) {
         await require('./agent/tts')
           .synth(reply)

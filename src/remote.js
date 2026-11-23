@@ -77,7 +77,7 @@ async function poll() {
       const { num, status } = JSON.parse(c.arg || '{}');
       if (['won', 'lost', 'open'].includes(status)) require('./sales').markOutcome(num, status);
     } else if (c.cmd === 'agent' && config.mode === 'business') {
-      const reply = await require('./agent/core').run(String(c.arg || ''));
+      const reply = await require('./agent/core').run(String(c.arg || ''), 'painel');
       lastReply = { text: c.arg, reply, at: Date.now() };
       await wa.send(`${config.ownerNumber}@s.whatsapp.net`, `🖥️ Ordem do painel: ${c.arg}
 
