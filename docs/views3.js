@@ -7,7 +7,7 @@ const VIA = { painel: 'CRM', whatsapp: 'WhatsApp', voz: '🎙️ voz' };
 function renderAct() {
   const a = D?.agent || { audit: [], pending: null, chat: [] };
   if (!$('ord')) {
-    $('v-act').innerHTML = `<h1>Chat com o bot</h1><div class="grid" style="grid-template-columns:1.4fr 1fr">
+    $('v-act').innerHTML = `<h1>Chat com o bot</h1><div class="grid chat-grid">
     <div class="card"><div class="row between"><b style="font-weight:500">Agente MD Business</b><span class="small muted">também no teu WhatsApp (926 115 429)</span></div>
       <div class="chat" id="chat"></div>
       <div class="sugs">${SUGS.map((t) => `<button class="btn l" onclick="order('${t}')">${t}</button>`).join('')}</div>
