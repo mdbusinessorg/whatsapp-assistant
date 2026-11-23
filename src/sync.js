@@ -31,9 +31,9 @@ async function restore() {
   if (!enabled) return;
   fs.mkdirSync(config.dataDir, { recursive: true });
   const rows = [];
-  for (let offset = 0; ; offset += 500) {
+  for (let after = ''; ; after = rows[rows.length - 1].path) {
     const res = await fetch(
-      `${url}/rest/v1/wa_files?instance=eq.${encodeURIComponent(instance)}&select=path,content&order=path&limit=500&offset=${offset}`,
+      `${url}/rest/v1/wa_files?instance=eq.${encodeURIComponent(instance)}&path=gt.${encodeURIComponent(JSON.stringify(after))}&select=path,content&order=path&limit=500`,
       { headers: headers() }
     );
     if (!res.ok) throw new Error(`restore ${res.status}: ${await res.text()}`);
