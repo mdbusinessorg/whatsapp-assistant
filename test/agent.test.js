@@ -251,3 +251,12 @@ test('rejeitar um plano e pedir outro não é recusar o atendimento', async t =>
   assert.ok(!profiles.contactBlocked(n,jid));
   assert.ok(require('../src/sales/signals').detect('Não quero, obrigado.').objections.some(o=>o.type==='not_interested'));
 });
+test('a recusa do modelo de acompanhamento bloqueia novos envios mesmo sem ajuda da IA', async t => {
+  const n='244900079994', jid=n+'@s.whatsapp.net', text='Não quero receber mais mensagens.';
+  t.mock.method(require('../src/sales/analyzer'),'analyze',async () => ({intent:'info'}));
+  t.mock.method(require('../src/brain'),'complete',async () => 'Entendido.');
+  const r=await require('../src/sales').respond({jid,num:n,text,history:[{role:'user',content:text}]});
+  assert.equal(r.profile.optOut,true);
+  assert.equal(r.plan.action,'respect_decline');
+  await assert.rejects(require('../src/sales/service-messages').send(n,'acompanhamento'),/não ser contactado/);
+});

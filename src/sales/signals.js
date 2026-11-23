@@ -36,7 +36,7 @@ const BUYING = [
   /envia(r)? (a )?(proposta|fatura|factura|orcamento formal)/,
 ];
 
-const DECLINE = /(para|pare|deixa) de (me )?(mandar|enviar|contactar)|nao (me )?(mande|envie|contacte)s? mais|nao quero (mais )?(mensagens|contacto)|remove o meu numero|apaga(r)? (os )?meus dados|\bstop\b|cancelar subscricao/;
+const DECLINE = /(para|pare|deixa) de (me )?(mandar|enviar|contactar)|nao (me )?(mande|envie|contacte)s? mais|nao quero (?:mais )?(?:(?:voltar a )?receber )?(?:mais )?(?:mensagens|contactos?)\b|remove o meu numero|apaga(r)? (os )?meus dados|\bstop\b|cancelar subscricao/;
 const FRUSTRATION = /(estou|to|tou) (farto|chateado|irritado)|que (mau|pessimo) atendimento|ninguem responde|ja (disse|expliquei)|nao (entendes|percebes)|absurdo|ridiculo|\bfoda\b|merda/;
 const DELETION = /apaga(r)? (os |todos os )?(meus )?dados|elimina(r)? (os )?(meus )?dados|remove(r)? (os )?meus dados|esquece (os )?meus dados/;
 const HUMAN = /falar com (alguem|uma pessoa|o responsavel|humano|um atendente|o dono|o ceo)|quero (um )?humano|atendente/;
