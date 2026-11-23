@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="pt">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Assistentes WhatsApp</title>
+<style>
+body{font-family:system-ui;background:#0f1115;color:#e8eaed;margin:0;padding:24px;max-width:760px;margin:auto}
+h1{font-size:22px}h2{font-size:18px;margin:0 0 10px}.card{background:#1a1d24;border-radius:12px;padding:16px;margin:12px 0}
+.badge{display:inline-block;padding:3px 10px;border-radius:99px;font-size:13px;margin-right:4px}
+.on{background:#12351f;color:#6ee7a0}.off{background:#3d1c1c;color:#ff9c9c}
+button{padding:8px 16px;border:0;border-radius:8px;font-weight:600;cursor:pointer}
+.stop{background:#ff5c5c;color:#fff}.go{background:#34d399;color:#06281c}
+pre{background:#111318;padding:12px;border-radius:8px;font-size:12px;max-height:240px;overflow:auto;white-space:pre-wrap}
+textarea,input{width:100%;background:#111318;color:#e8eaed;border:1px solid #333;border-radius:8px;padding:10px;box-sizing:border-box;margin:6px 0}
+img.qr{background:#fff;padding:10px;border-radius:8px}details{margin-top:8px}small{color:#9aa0a6}
+</style>
+</head>
+<body>
+<h1>🤖 Assistentes WhatsApp</h1>
+<div id="login" class="card" hidden>
+  <p>Token de acesso (WEB_TOKEN):</p>
+  <input id="tok" type="password" autofocus><button class="go" onclick="saveTok()">Entrar</button>
+</div>
+<div id="err" class="card" hidden></div>
+<div id="list"></div>
+<script>
+const FN = 'https://rhcsgnjqdveferhlddgb.supabase.co/functions/v1/wa-panel';
+const qs = new URLSearchParams(location.search);
+if (qs.get('token')) { localStorage.waTok = qs.get('token'); history.replaceState(null, '', location.pathname); }
+const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+function saveTok() { localStorage.waTok = document.getElementById('tok').value.trim(); load(); }
+async function api(body) {
+  const r = await fetch(FN, { method: 'POST', headers: { 'content-type': 'application/json', 'x-token': localStorage.waTok || '' }, body: JSON.stringify(body) });
+  if (r.status === 401) { document.getElementById('login').hidden = false; throw new Error('token inválido'); }
+  const j = await r.json(); if (!r.ok) throw new Error(j.error || r.status); return j;
+}
+async function cmd(instance, c, arg) {
+  await api({ action: 'cmd', instance, cmd: c, arg });
+  document.getElementById('st-' + instance).textContent = '⏳ enviado — aplica em segundos';
+}
+function render(now, rows) {
+  const list = document.getElementById('list');
+  for (const r of rows) {
+    const d = r.data, age = (new Date(now) - new Date(r.updated_at)) / 1000, online = age < 150;
+    let el = document.getElementById('i-' + r.instance);
+    if (!el) {
+      el = document.createElement('div'); el.className = 'card'; el.id = 'i-' + r.instance;
+      el.innerHTML = `<h2></h2><div class="top"></div><div class="qrbox"></div><small id="st-${r.instance}"></small>
+<details><summary>Contexto do assistente</summary><textarea rows="10"></textarea><button class="go save">💾 Guardar contexto</button></details>
+<details><summary>Enviar mensagem</summary><input class="to" placeholder="Número (ex.: 244923000000)"><textarea class="msg" rows="3" placeholder="Mensagem"></textarea><button class="go send">Enviar</button></details>
+<details><summary>Log</summary><pre></pre></details>`;
+      list.appendChild(el);
+      const ta = el.querySelector('details textarea');
+      ta.oninput = () => (ta.dataset.dirty = '1');
+      el.querySelector('.save').onclick = () => { cmd(r.instance, 'context', ta.value); ta.dataset.dirty = ''; };
+      el.querySelector('.send').onclick = () => cmd(r.instance, 'send', JSON.stringify({ to: el.querySelector('.to').value, text: el.querySelector('.msg').value }));
+    }
+    el.querySelector('h2').textContent = d.title + ' (/' + r.instance + ')';
+    el.querySelector('.top').innerHTML =
+      `<span class="badge ${online ? 'on' : 'off'}">${online ? 'Servidor online' : 'Servidor offline (' + Math.round(age / 60) + ' min)'}</span>` +
+      `<span class="badge ${d.connected ? 'on' : 'off'}">${d.connected ? 'WhatsApp ligado (' + esc(d.selfNum) + ')' : 'WhatsApp desligado'}</span>` +
+      `<span class="badge ${d.paused ? 'off' : 'on'}">${d.paused ? 'Em pausa' : 'A responder'}</span><br><br>` +
+      `<button class="${d.paused ? 'go' : 'stop'}" onclick="cmd('${r.instance}','toggle')">${d.paused ? '▶ Retomar' : '⏸ Pausar'}</button>` +
+      `<p><small>Grupos: ${d.replyGroups ? 'responde' : 'só quando chamado'} · Chats mudos: ${d.mutedChats} · Lembretes: ${d.reminders} · Urgentes: ${d.pendingUrgent}</small></p>` +
+      (d.ownerNote ? `<p>📝 <b>Nota:</b> ${esc(d.ownerNote)}</p>` : '');
+    el.querySelector('.qrbox').innerHTML = d.qr && online
+      ? `<p><b>Escaneia com o WhatsApp</b> (Aparelhos ligados → Ligar aparelho):</p><img class="qr" src="${d.qr}">` : '';
+    const ta = el.querySelector('details textarea');
+    if (!ta.dataset.dirty && document.activeElement !== ta) ta.value = d.context || '';
+    el.querySelector('pre').textContent = (d.logs || []).join('\n') || '(vazio)';
+  }
+}
+async function load() {
+  const err = document.getElementById('err');
+  try {
+    const j = await api({ action: 'get' });
+    document.getElementById('login').hidden = true; err.hidden = true;
+    render(j.now, j.instances);
+    if (!j.instances.length) { err.hidden = false; err.textContent = 'A arrancar… (ainda sem dados)'; }
+  } catch (e) { if (e.message !== 'token inválido') { err.hidden = false; err.textContent = 'Erro: ' + e.message; } }
+}
+if (!localStorage.waTok) document.getElementById('login').hidden = false; else load();
+setInterval(() => localStorage.waTok && load(), 5000);
+</script>
+</body>
+</html>

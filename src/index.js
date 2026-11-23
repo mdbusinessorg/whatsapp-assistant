@@ -5,6 +5,7 @@ async function main() {
   const wa = require('./whatsapp');
   const web = require('./web');
   web.start();
+  require('./remote').start();
   sync.start();
   await wa.connect();
 }

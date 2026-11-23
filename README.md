@@ -88,3 +88,17 @@ alter table public.wa_files enable row level security;
 ```
 
 O serviço faz ping a si próprio (`RENDER_EXTERNAL_URL`/`KEEPALIVE_URL`) a cada 10 min para não adormecer.
+
+## Alojamento grátis: GitHub Actions + painel no GitHub Pages
+
+- `.github/workflows/worker.yml` corre `src/multi.js` (pessoal + business) em turnos de ~6h; cada turno agenda o seguinte (concorrência `wa-worker`) e um cron de 20 min serve de watchdog. Repo público = minutos ilimitados.
+- Secrets do repo: `GROQ_API_KEY`, `WEB_TOKEN`, `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, `BUSINESS_OWNER_NUMBER`.
+- `src/remote.js` publica estado/QR/log em `wa_panel` e executa comandos (`toggle`, `context`, `send`) de `wa_cmds`.
+- Painel: `docs/index.html` (GitHub Pages) → edge function `wa-panel` (`supabase functions deploy wa-panel --no-verify-jwt`, secret `WA_PANEL_TOKEN` = `WEB_TOKEN`).
+
+```sql
+create table public.wa_panel (instance text primary key, data jsonb not null, updated_at timestamptz not null default now());
+create table public.wa_cmds (id bigserial primary key, instance text not null, cmd text not null, arg text, created_at timestamptz not null default now());
+alter table public.wa_panel enable row level security;
+alter table public.wa_cmds enable row level security;
+```
