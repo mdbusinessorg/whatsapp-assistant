@@ -16,6 +16,7 @@ const fold = s => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '
 const sector = tag => labels.get(tag) || tag;
 const nonRetail = new Set(['vacant', 'no', 'closed', 'empty', 'disused', 'abandoned', 'construction', 'proposed']);
 const isRetail = tag => typeof tag === 'string' && /^[a-z][a-z0-9_]{0,63}$/.test(tag) && !nonRetail.has(tag);
+const retailTags = value => [...new Set(typeof value === 'string' ? value.split(';').map(t => t.trim()).filter(isRetail) : [])];
 let cache, loading;
 
 async function download() {
@@ -27,8 +28,9 @@ async function download() {
   if (!files['points_of_interest.geojson']) throw new Error('Formato do directório não reconhecido.');
   const entries = [];
   for (const { properties: p } of JSON.parse(strFromU8(files['points_of_interest.geojson'])).features) {
-    if (!p?.name || !isRetail(p.shop) || !/^(node|way|relation)\/\d+$/.test(p.id) || !p.adm1_name) continue;
-    entries.push({ id: p.id.replace('/', '-'), name: String(p.name).slice(0, 100), tag: p.shop,
+    const tags = retailTags(p?.shop);
+    if (!p?.name || !tags.length || !/^(node|way|relation)\/\d+$/.test(p.id) || !p.adm1_name) continue;
+    entries.push({ id: p.id.replace('/', '-'), name: String(p.name).slice(0, 100), tag: tags.join(';'),
       region: p.adm1_name, source: `https://www.openstreetmap.org/${p.id}` });
   }
   cache = { at: Date.now(), entries };
@@ -41,4 +43,4 @@ async function shops() {
   return loading;
 }
 
-module.exports = { shops, groups, fold, sector, isRetail };
+module.exports = { shops, groups, fold, sector, isRetail, retailTags };

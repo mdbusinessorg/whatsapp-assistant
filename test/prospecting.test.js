@@ -88,3 +88,16 @@ test('apagar os dados elimina também hash e recibo do pedido, incluindo via LID
   const persisted = fs.readFileSync(path.join(dir,'roque-prospects.json'),'utf8');
   assert.ok(!persisted.includes('recibo-apagar'));
 });
+
+test('uma loja de vários ramos aparece em qualquer dos filtros sem duplicação', async () => {
+  const { retailTags } = require('../src/sales/shop-directory');
+  const tag = 'hairdresser; clothes;no;clothes';
+  assert.deepEqual(retailTags(tag), ['hairdresser','clothes']);
+  for (const [i, filter] of ['todas','Beleza','Moda','hairdresser','clothes'].entries()) {
+    const load = async () => [{ ...catalog[0], id:`way-${70+i}`, name:`Loja mista ${i}`, tag }];
+    const r = await campaign.discover(filter, load);
+    assert.equal(r.count,1);
+    assert.equal(r.shops[0].sector,'Beleza / Moda');
+    assert.equal((await campaign.discover('Moda',load)).count,0);
+  }
+});

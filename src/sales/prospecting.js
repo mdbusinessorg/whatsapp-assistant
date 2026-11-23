@@ -3,7 +3,8 @@ const path = require('path');
 const crypto = require('crypto');
 const config = require('../config');
 const directory = require('./shop-directory');
-const { fold, sector } = directory;
+const { fold, sector, retailTags } = directory;
+const sectorsOf = s => [...new Set(retailTags(s.tag).map(sector))];
 
 const file = path.join(config.dataDir, 'roque-prospects.json');
 let state = { shops: [], selected: [], filter: '', sectors: [] };
@@ -15,7 +16,7 @@ function save() {
 }
 const find = id => state.shops.find(s => s.id === id);
 const draft = s => s.proposal || `Bom dia, equipa ${s.name}. Sou o Matias Domingos, da MD Business. Gostaríamos de convidar a vossa loja a apresentar uma pequena selecção de produtos no Roque Santeiro, um mercado digital para lojas angolanas. Podemos mostrar-vos como ficaria a vossa montra com três artigos à vossa escolha?\n\nDemonstração: https://roque-santeiro-express.netlify.app/\nMatias Domingos | MD Business`;
-const summary = s => ({ id: s.id, name: s.name, sector: sector(s.tag), region: s.region, source: s.source,
+const summary = s => ({ id: s.id, name: s.name, sector: sectorsOf(s).join(' / '), region: s.region, source: s.source,
   proposal: draft(s), feedback: s.feedback || '', requestsServed: Object.values(s.requests || {}).filter(v => v.status === 'accepted').length });
 function containsDraft(text) {
   const normalized = fold(text).replace(/\s+/g, ' ');
@@ -24,7 +25,7 @@ function containsDraft(text) {
 const status = () => ({ filter: state.filter, shops: state.selected.map(find).filter(Boolean).map(summary),
   sectors: [...new Set([...Object.keys(directory.groups), ...Object.values(directory.groups).flat(), ...state.sectors.filter(directory.isRetail)])].sort((a, b) => a.localeCompare(b, 'pt')) });
 
-const tags = entries => [...new Set(entries.map(s => s.tag))].sort();
+const tags = entries => [...new Set(entries.flatMap(s => retailTags(s.tag)))].sort();
 async function refreshSectors(load = directory.shops) {
   const next = tags(await load());
   if (JSON.stringify(next) !== JSON.stringify(state.sectors)) { state.sectors = next; save(); }
@@ -38,17 +39,20 @@ async function discover(filter = '', load = directory.shops) {
   const knownIds = new Set(state.shops.map(s => s.id));
   const weights = new Map();
   for (const s of state.shops) {
-    const category = sector(s.tag);
-    weights.set(category, (weights.get(category) || 0) + ({ relevant: 1, dismiss: -1 }[s.feedback] || 0));
+    for (const category of sectorsOf(s)) weights.set(category, (weights.get(category) || 0) + ({ relevant: 1, dismiss: -1 }[s.feedback] || 0));
   }
-  const candidates = entries.filter(s => all || [sector(s.tag), s.tag].some(v => fold(v) === key));
-  candidates.sort((a,b) => (weights.get(sector(b.tag)) || 0) - (weights.get(sector(a.tag)) || 0));
+  const candidates = entries.map(shop => {
+    const tags = retailTags(shop.tag), sectors = [...new Set(tags.map(sector))];
+    return { shop, sectors, matches: all || [...tags, ...sectors].some(v => fold(v) === key),
+      weight: Math.max(...sectors.map(v => weights.get(v) || 0)) };
+  }).filter(c => c.matches && c.sectors.length);
+  candidates.sort((a,b) => b.weight - a.weight);
   const chosen = [], used = new Set();
   function select(diversify) {
-    for (const s of candidates) {
+    for (const { shop: s, sectors } of candidates) {
       if (chosen.length === 3) break;
-      if (knownIds.has(s.id) || known.has(fold(s.name)) || (diversify && used.has(sector(s.tag)))) continue;
-      chosen.push(s); used.add(sector(s.tag)); known.add(fold(s.name));
+      if (knownIds.has(s.id) || known.has(fold(s.name)) || (diversify && sectors.every(v => used.has(v)))) continue;
+      chosen.push(s); sectors.forEach(v => used.add(v)); known.add(fold(s.name));
       knownIds.add(s.id);
     }
   }
@@ -73,8 +77,8 @@ function proposal(id) {
   return summary(s);
 }
 function list(query = '') {
-  const rows = state.shops.filter(s => fold(`${s.name} ${s.id} ${sector(s.tag)}`).includes(fold(query)));
-  return rows.slice(-20).map(s => ({ id: s.id, name: s.name, sector: sector(s.tag), feedback: s.feedback || '' }));
+  const rows = state.shops.filter(s => fold(`${s.name} ${s.id} ${s.tag} ${sectorsOf(s).join(' ')}`).includes(fold(query)));
+  return rows.slice(-20).map(s => ({ id: s.id, name: s.name, sector: sectorsOf(s).join(' / '), feedback: s.feedback || '' }));
 }
 
 // A pesquisa não recolhe números. O único destinatário é o chat privado que pediu este texto.
