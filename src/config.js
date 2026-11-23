@@ -46,7 +46,9 @@ module.exports = {
   title: process.env.ASSISTANT_TITLE || (mode === 'business' ? `${businessName} — Atendimento` : 'Mega Assistente'),
   // Número do dono em formato internacional sem '+' (ex: 2449XXXXXXXX).
   // Por defeito é o número principal do Joel.
-  ownerNumber: (process.env.OWNER_NUMBER || '244934859497').replace(/\D/g, ''),
+  ownerNumber: mode === 'business'
+    ? require('./business-inbox').businessOwner(process.env.BUSINESS_OWNER_NUMBER)
+    : (process.env.OWNER_NUMBER || '244934859497').replace(/\D/g, ''),
   // Contexto inicial usado enquanto não houver data/context.txt (editável no painel)
   defaultContextFile:
     process.env.DEFAULT_CONTEXT_FILE ||

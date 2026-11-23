@@ -15,18 +15,8 @@ const HELP = `*${config.title}* 🤖 — comandos:
 *!status* — estado do assistente
 *!nota <texto>* — definir a tua nota/rotina atual (dono)
 *!hoje* — relatório de quem falou hoje e o que queria (dono)
-${config.mode === 'business' ? '*!leads* — leads com score e explicação (dono)\n*!vendas* — métricas de vendas (dono)\n*!vendido <número>* / *!perdido <número>* — registar resultado (dono)\n' : ''}
+${config.mode === 'business' ? '*!relatorio* — relatório completo, sem filtros (dono)\n*!leads* — leads com score e explicação (dono)\n*!vendas* — métricas de vendas (dono)\n*!vendido <número>* / *!perdido <número>* — registar resultado (dono)\n' : ''}
 Também entendo *mensagens de voz* 🎙️ — envia um áudio e eu transcrevo e respondo.`;
-
-function jidNum(jid) {
-  return jid.split('@')[0].replace(/:\d+$/, '');
-}
-
-function isOwner(jid, fromMe, ownerNumber, selfNum) {
-  const n = jidNum(jid);
-  if (ownerNumber) return n === ownerNumber;
-  return fromMe || n === selfNum;
-}
 
 // Devolve string de resposta (já enviável) ou null se não era comando.
 // ctx: { jid, isGroup, fromMe, owner, selfNum }
@@ -36,6 +26,7 @@ async function handle(text, ctx) {
   const [cmd, ...rest] = t.slice(1).split(/\s+/);
   const arg = rest.join(' ');
   const owner = ctx.owner;
+  if (config.mode === 'business' && (!owner || ctx.isGroup || ctx.fromMe)) return null;
 
   switch (cmd.toLowerCase()) {
     case 'ajuda':
@@ -99,8 +90,11 @@ async function handle(text, ctx) {
       saveState();
       return '📝 Anotado — passei a usar isto como tua nota atual.';
     }
-    case 'hoje':
-    case 'relatorio': {
+    case 'relatório':
+    case 'relatorio':
+      if (config.mode === 'business') return require('./agent/core').run('relatório completo');
+      // No modo pessoal o relatório continua a ser o resumo do dia.
+    case 'hoje': {
       if (!owner) return '⛔ Só o dono.';
       const dayStart = Date.parse(new Date(Date.now() + 3600000).toISOString().slice(0, 10) + 'T00:00:00Z') - 3600000;
       const today = contactsSince(dayStart);
@@ -125,18 +119,7 @@ async function handle(text, ctx) {
         const p = sales.markOutcome(arg, c === 'vendido' ? 'won' : 'lost');
         return p ? `✅ +${p.num} marcado como ${c}.` : 'Não encontrei esse número nos leads.';
       }
-      const d = sales.dashboard();
-      if (c === 'vendas') {
-        return (
-          `📊 *Vendas*\nLeads: ${d.total} · Qualificados: ${d.qualified} · Quentes: ${d.hot}\n` +
-          `Vendidos: ${d.won} · Perdidos: ${d.lost} · Conversão: ${d.conversionRate}%\n` +
-          `Follow-ups: ${d.followUpsSent} · Recuperados: ${d.recovered}\n` +
-          (d.topObjections.length ? `Objeções: ${d.topObjections.map(([t, n]) => `${t} (${n})`).join(', ')}\n` : '') +
-          (d.insights.length ? `\n💡 ${d.insights.join('\n💡 ')}` : '')
-        );
-      }
-      if (!d.leads.length) return 'Ainda não há leads abertos.';
-      return '🔥 *Leads*\n\n' + d.leads.slice(0, 10).map((l) => `+${l.num}${l.name ? ` (${l.name})` : ''} — ${l.category} ${l.score}/100 · ${l.stage}${l.need ? `\n   ${l.need}` : ''}\n   ${l.reasons.slice(0, 4).join(', ')}`).join('\n\n');
+      return require('./agent/core').run('relatório completo');
     }
     case 'status':
       return (

@@ -1,7 +1,7 @@
 // Teste real do agente do dono com a Groq (WhatsApp simulado): node test/agent-live.js
 process.env.WEB_TOKEN ||= 'sim';
 process.env.ASSISTANT_MODE = 'business';
-process.env.OWNER_NUMBER = '244926115429';
+process.env.BUSINESS_OWNER_NUMBER = '244900000001';
 process.env.DATA_DIR = require('fs').mkdtempSync(require('path').join(require('os').tmpdir(), 'wa-agent-'));
 const path = require('path');
 const sent = [];

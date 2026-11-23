@@ -20,4 +20,4 @@ function record(entry) {
 
 const recent = (n = 40) => log.slice(-n).reverse();
 
-module.exports = { record, recent };
+module.exports = { record, recent, all: () => log.slice() };
