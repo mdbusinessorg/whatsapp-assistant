@@ -16,6 +16,7 @@ const commands = require('./commands');
 const sales = config.mode === 'business' ? require('./sales') : null;
 const agent = config.mode === 'business' ? require('./agent/core') : null;
 const { clearHistory } = require('./state');
+const { createInbox } = require('./business-inbox');
 
 const logger = pino({ level: process.env.LOG_LEVEL || 'warn' });
 const AUTH_DIR = path.join(config.dataDir, 'auth');
@@ -44,13 +45,29 @@ async function sendAudio(jid, { buffer, mimetype, ptt }) {
   return sock.sendMessage(jid, { audio: buffer, mimetype, ptt });
 }
 
+async function sendDocument(jid, document, fileName) {
+  if (!sock) throw new Error('WhatsApp desligado');
+  return sock.sendMessage(jid, { document, mimetype: 'text/plain', fileName });
+}
+
+function content(msg) {
+  let m = msg.message || {};
+  for (let n = 0; n < 5; n++) {
+    const inner = m.ephemeralMessage?.message || m.documentWithCaptionMessage?.message;
+    if (!inner) break;
+    m = inner;
+  }
+  return m;
+}
+
 function extractText(msg) {
-  const m = msg.message || {};
+  const m = content(msg);
   return (
     m.conversation ||
     m.extendedTextMessage?.text ||
     m.imageMessage?.caption ||
     m.videoMessage?.caption ||
+    m.documentMessage?.caption ||
     ''
   );
 }
@@ -82,20 +99,22 @@ async function notifyLead(jid, num, name, text, extra = '') {
     .join('\n');
   await send(
     `${config.ownerNumber}@s.whatsapp.net`,
-    `💼 *Novo cliente — ${config.businessName}*\n+${num}${name ? ` (${name})` : ''}\n"${text.slice(0, 300)}"${extra ? `\n${extra}` : ''}\n\n${convo}\n\nwa.me/${num}`
+    `💼 *Novo cliente — ${config.businessName}*\n${num ? '+' + num : 'Número não partilhado'}${name ? ` (${name})` : ''}\n"${text.slice(0, 300)}"${extra ? `\n${extra}` : ''}\n\n${convo}${num ? `\n\nwa.me/${num}` : ''}`
   ).catch((e) => log(`aviso de lead falhou: ${e.message}`));
 }
 
-async function handleIncoming(msg) {
+async function handleIncoming(msg, inbox) {
   const jid = msg.key.remoteJid;
   if (!jid || jid === 'status@broadcast' || jid.endsWith('@newsletter')) return;
   const isGroup = jid.endsWith('@g.us');
   const fromMe = !!msg.key.fromMe;
   const text = extractText(msg).trim();
-  const audio = msg.message?.audioMessage;
+  const audio = content(msg).audioMessage;
+  const route = sales && await inbox(msg.key);
+  if (sales && !route) return;
 
   // Identidade do remetente: o WhatsApp pode entregar como @lid — o nº real vem em remoteJidAlt/participantAlt
-  const senderNum = jidNum(
+  const senderNum = route ? route.num : jidNum(
     msg.key.remoteJidAlt ||
       msg.key.senderPn ||
       msg.key.participantPn ||
@@ -103,20 +122,20 @@ async function handleIncoming(msg) {
       msg.key.participant ||
       jid
   );
-  const owner =
+  const owner = route ? route.role === 'owner' :
     senderNum === config.ownerNumber || jidNum(jid) === config.ownerNumber || (!config.ownerNumber && (fromMe || jidNum(jid) === selfNum));
   log(`msg de +${senderNum}${owner ? ' (dono)' : ''} jid=${jid}`);
 
   if (fromMe && !owner && !text.startsWith('!')) return;
 
-  if (text.startsWith('!')) {
+  if (text.startsWith('!') && (!route || owner)) {
     const reply = await commands.handle(text, { jid, isGroup, fromMe, owner, selfNum });
     if (reply) await send(jid, reply);
     return;
   }
 
   // Mensagem do dono: resolve urgentes pendentes e segue para resposta normal da IA
-  if (owner && !isGroup && text) {
+  if (owner && !isGroup && text && (!sales || /^assumo os urgentes[.!]?$/i.test(text))) {
     for (const [pjid, ts] of Object.entries(state.pendingUrgent)) {
       if (Date.now() - ts < 30 * 60000) {
         await send(pjid, config.mode === 'business'
@@ -126,9 +145,10 @@ async function handleIncoming(msg) {
       delete state.pendingUrgent[pjid];
     }
     saveState();
+    if (sales) return;
   }
 
-  if (state.paused || state.chatsMuted.includes(jid)) return;
+  if (!(sales && owner) && (state.paused || state.chatsMuted.includes(jid))) return;
   if (isGroup && !state.replyGroups && !mentionedMe(msg)) return;
 
   await sock.sendPresenceUpdate('composing', jid).catch(() => {});
@@ -145,7 +165,25 @@ async function handleIncoming(msg) {
       userText = transcript;
       await send(jid, `🎙️ _Transcrição:_ ${transcript}`);
     }
-    if (!userText) return;
+    if (!userText) {
+      const m = content(msg);
+      if (route?.role === 'customer' && (m.imageMessage || m.documentMessage || m.videoMessage || m.stickerMessage)) {
+        await send(jid, 'Recebi o anexo. Podes dizer-me por texto ou áudio em que precisas de ajuda?');
+      }
+      return;
+    }
+
+    if (agent && owner && !isGroup) {
+      const reply = await agent.run(userText, audio ? 'voz' : 'whatsapp');
+      if (audio && reply) {
+        await require('./agent/tts')
+          .synth(reply)
+          .then((v) => sendAudio(jid, v))
+          .catch((e) => log(`resposta em voz falhou: ${e.message}`));
+      }
+      if (reply) await send(jid, reply);
+      return;
+    }
 
     if (!owner && !fromMe) {
       logContact({
@@ -174,12 +212,12 @@ async function handleIncoming(msg) {
     pushHistory(jid, 'user', userText);
 
     // Assunto urgente: avisa o dono no número principal
-    if (!isGroup && config.ownerNumber && /urgente|urg[êe]ncia|emerg[êe]ncia|\basap\b/i.test(userText)) {
+    if (!isGroup && !owner && config.ownerNumber && /urgente|urg[êe]ncia|emerg[êe]ncia|\basap\b/i.test(userText)) {
       state.pendingUrgent[jid] = Date.now();
       saveState();
       await send(
         `${config.ownerNumber}@s.whatsapp.net`,
-        `🚨 Mensagem URGENTE de +${jidNum(jid)}:\n"${userText.slice(0, 300)}"\n\nResponde aqui (qualquer texto) e eu dou-lhe o teu contacto principal.`
+        `🚨 Mensagem URGENTE (${senderNum ? '+' + senderNum : 'número não partilhado'}):\n"${userText.slice(0, 300)}"${sales ? '\n\nSe vais assumir os pedidos urgentes dos últimos 30 minutos, responde «assumo os urgentes».' : '\n\nResponde aqui (qualquer texto) e eu dou-lhe o teu contacto principal.'}`
       ).catch((e) => log(`aviso urgente falhou: ${e.message}`));
       await send(
         jid,
@@ -197,18 +235,10 @@ async function handleIncoming(msg) {
       const p = r.profile;
       if (p) {
         log(`vendas +${senderNum}: ${r.analysis?.intent || '?'} · ${p.stage} · ${p.category} ${p.score}/100 · ${r.plan?.action}${r.issues?.length ? ` · QC: ${r.issues.join('; ')}` : ''}`);
-        if (config.ownerNumber && !state.pendingUrgent[jid] && (wantsHumanOrQuote(userText) || r.detected?.wantsHuman || ['hot', 'ready'].includes(p.category))) {
+        if (config.ownerNumber && Date.now() - (state.pendingUrgent[jid] || 0) >= 30 * 60000 && (wantsHumanOrQuote(userText) || r.detected?.wantsHuman || ['hot', 'ready'].includes(p.category))) {
           const extra = `📊 Lead ${p.category} (${p.score}/100) · ${p.stage}${p.facts.need ? ` · precisa: ${p.facts.need}` : ''}`;
           await notifyLead(jid, senderNum, msg.pushName, userText, extra);
         }
-      }
-    } else if (agent && owner && !isGroup) {
-      reply = await agent.run(userText, audio ? 'voz' : 'whatsapp');
-      if (audio && reply) {
-        await require('./agent/tts')
-          .synth(reply)
-          .then((v) => sendAudio(jid, v))
-          .catch((e) => log(`resposta em voz falhou: ${e.message}`));
       }
     } else {
       reply = await brain.chat(getHistory(jid));
@@ -240,6 +270,7 @@ async function connect() {
   });
 
   sock.ev.on('creds.update', saveCreds);
+  const inbox = createInbox(config.ownerNumber, sock.onWhatsApp);
 
   sock.ev.on('connection.update', ({ connection, lastDisconnect, qr }) => {
     if (qr) {
@@ -288,9 +319,7 @@ async function connect() {
 
   sock.ev.on('messages.upsert', ({ messages, type }) => {
     if (type !== 'notify') return;
-    for (const msg of messages) {
-      handleIncoming(msg).catch((e) => log(`handleIncoming: ${e.message}`));
-    }
+    return Promise.all(messages.map(msg => handleIncoming(msg, inbox).catch(e => log(`handleIncoming: ${e.message}`))));
   });
 }
 
@@ -305,6 +334,10 @@ setInterval(async () => {
   const today = contactsSince(dayStart);
   if (!today.length) return;
   lastDigestDay = day;
+  if (config.mode === 'business') {
+    await require('./agent/core').execute('sales_report', { period: 'all' }, 'Relatório automático das 19h');
+    return;
+  }
   const lines = today
     .map((c) => `+${c.num}${c.name ? ` (${c.name})` : ''}: ${c.text.slice(0, 120)}${c.urgent ? ' [URGENTE]' : ''}`)
     .join('\n');
@@ -343,4 +376,4 @@ async function setPaused(p) {
   saveState();
 }
 
-module.exports = { connect, send, sendAudio, status, setPaused, log };
+module.exports = { connect, send, sendAudio, sendDocument, status, setPaused, log };

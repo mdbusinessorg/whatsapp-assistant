@@ -8,7 +8,7 @@
     "start": "node src/index.js",
     "start:multi": "node src/multi.js",
     "dev": "node --watch src/index.js",
-    "test": "node --test test/signals.test.js test/engine.test.js test/followup.test.js test/agent.test.js",
+    "test": "node --test test/signals.test.js test/engine.test.js test/followup.test.js test/agent.test.js test/inbox.test.js",
     "sim": "node test/sim.js"
   },
   "engines": {

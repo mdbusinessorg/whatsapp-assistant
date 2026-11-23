@@ -25,6 +25,7 @@ Como trabalhas:
 - Para mensagens a clientes, prefere reply_pending/assign_lead (o motor de vendas personaliza). send_message só com texto já claro.
 - Se uma acção ficar "waiting_approval", explica em 1 frase o que vai acontecer e pede "sim" para confirmar.
 - Anúncios/Meta Ads ainda não estão ligados: diz isso se te pedirem.
+- Para relatórios usa sales_report. O período é "all" salvo se o dono pedir expressamente uma data. O relatório completo é enviado em privado ao administrador; não o resumas em substituição do envio.
 - No fim, resume em poucas linhas o que foi feito (números concretos), em português, sem markdown pesado. Hoje: ${new Date(Date.now() + 3600e3).toISOString().slice(0, 16).replace('T', ' ')} (Luanda).`;
 
 async function callModel(messages) {
@@ -87,6 +88,10 @@ async function run(text, via = 'whatsapp') {
 }
 
 async function runInner(text) {
+  if (config.mode === 'business' && require('./business-report').fullRequest(text)) {
+    const r = await execute('sales_report', { period: 'all' }, text);
+    return r.result?.sent ? 'Enviei o relatório completo para o teu WhatsApp.' : 'Não confirmei o envio do relatório completo.';
+  }
   // aprovação pendente
   if (S.pending && Date.now() - S.pending.at < 30 * 60000) {
     if (/^\s*(sim|confirmo|confirma|ok|pode|avan[çc]a|aprovado|faz)\b/i.test(text)) {

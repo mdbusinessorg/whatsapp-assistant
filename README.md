@@ -58,7 +58,7 @@ Mesma base de código, segunda app Fly com `ASSISTANT_MODE=business` (ver `fly.b
 
 - Responde como assistente virtual da empresa (`BUSINESS_NAME`, default "MD Business"), usando só a info de `context/business.txt` (serviços, planos, preços, pagamentos) — editável no painel.
 - Qualifica o pedido (nome, negócio, o que pretende, prazo, orçamento).
-- Pedidos de orçamento/contratação ou de falar com uma pessoa → aviso "Novo cliente" ao `OWNER_NUMBER` com o resumo da conversa e link wa.me (no máx. 1 aviso por cliente a cada 6h). Urgências também avisam o dono.
+- Pedidos de orçamento/contratação ou de falar com uma pessoa → aviso "Novo cliente" ao `BUSINESS_OWNER_NUMBER` com o resumo da conversa e, se o WhatsApp fornecer o número, link wa.me (no máx. 1 aviso por cliente a cada 6h). Urgências também avisam o dono.
 
 ```bash
 flyctl apps create whatsapp-business-mdm
@@ -70,7 +70,9 @@ flyctl deploy -c fly.business.toml
 ## Pessoal + Business num só serviço (hosts sem disco, ex.: Render free)
 
 `src/multi.js` arranca vários assistentes no mesmo container, cada um no seu caminho (`/pessoal/`, `/business/`).
-Variáveis com prefixo do nome (ex.: `BUSINESS_OWNER_NUMBER`) só se aplicam a essa instância.
+`BUSINESS_OWNER_NUMBER` identifica o único administrador por WhatsApp, tanto no arranque directo como em multi-instância. Não herda o dono do bot pessoal. Em privado, qualquer outro número recebe atendimento como cliente, esteja ou não nos contactos. Sem identificação confirmada pelo WhatsApp, o remetente nunca recebe poderes de administrador.
+
+Em privado, o administrador pode escrever **!relatorio** ou **manda-me o relatório completo**. Recebe os clientes de todo o período e as acções de auditoria ainda guardadas, sem corte por estado ou pontuação. Um relatório longo chega como documento de texto. Não inclui conversas que o bot não recebeu nem dados apagados. Mensagens históricas não são reenviadas automaticamente.
 
 ```
 INSTANCES=pessoal:personal,business:business

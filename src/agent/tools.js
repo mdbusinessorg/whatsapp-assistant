@@ -121,10 +121,11 @@ T.assign_lead.checkLimits = (a) => {
   return (a.max_discount_pct || 0) > max ? `desconto de ${a.max_discount_pct}% acima do limite configurado (${max}%)` : null;
 };
 
-tool('sales_report', 'Relatório de vendas (hoje/semana/tudo): leads, quentes, vendidos, conversão, objeções, pendentes. send_to_owner=true envia para o WhatsApp do dono.', {
+tool('sales_report', 'Sem período ou com all: envia o relatório completo, sem filtros, exclusivamente para o administrador. Usar today/week apenas a pedido explícito.', {
   period: { type: 'string', enum: ['today', 'week', 'all'] }, send_to_owner: { type: 'boolean' },
 }, [], async (a) => {
-  const span = { today: 864e5, week: 7 * 864e5 }[a.period || 'today'];
+  if (!a.period || a.period === 'all') return require('./business-report').deliver();
+  const span = { today: 864e5, week: 7 * 864e5 }[a.period];
   const d = sales().dashboard();
   const active = sales().profiles.all().filter((l) => !span || Date.now() - l.lastCustomerAt < span);
   const report = { period: a.period || 'today', activeLeads: active.length, newLeads: active.filter((l) => !span || Date.now() - l.createdAt < span).length, total: d.total, hot: d.hot, won: d.won, lost: d.lost, conversionRate: d.conversionRate, pending: d.pending.length, followUpsSent: d.followUpsSent, recovered: d.recovered, topObjections: d.topObjections, insights: d.insights, hotLeads: active.filter((l) => ['hot', 'ready'].includes(l.category)).map(brief).slice(0, 8) };
