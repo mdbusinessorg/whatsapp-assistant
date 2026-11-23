@@ -100,7 +100,7 @@ async function run(text) {
     if (!calls.length) {
       trim();
       save();
-      return msg.content || '✅';
+      return require('../sales/quality').toWhatsApp(msg.content || '✅');
     }
     for (const c of calls) {
       let args = {};
