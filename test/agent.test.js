@@ -154,3 +154,14 @@ test('duas pesquisas na mesma ordem conservam todas as fichas na selecção do C
   await core.run('Pesquisar lojas: moda');
   assert.deepEqual(core.status().prospecting.shops, []);
 });
+test('um acompanhamento manual adia o automático mesmo num pedido antigo', async () => {
+  const { dueLeads } = require('../src/sales/followup');
+  const n = '244900099999', h = 3600e3, now = Date.now();
+  const p = lead(`${n}@s.whatsapp.net`,{num:n,score:70,lastCustomerAt:now-200*h,lastBotAt:now-199*h});
+  assert.equal(dueLeads([p]).length,1);
+  const r = await core.execute('send_message',{num:n,template:'acompanhamento'},'acompanha');
+  assert.equal(r.status,'completed');
+  assert.equal(p.followUps.length,1);
+  assert.equal(dueLeads([p],p.lastBotAt+30*60000).length,0);
+  assert.equal(dueLeads([p],p.lastBotAt+48*h).length,1);
+});

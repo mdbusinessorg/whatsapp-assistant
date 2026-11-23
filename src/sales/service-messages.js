@@ -20,6 +20,7 @@ async function send(num, template) {
     st.pushHistory(p.jid, 'assistant', text);
     st.saveHistories();
     p.lastBotAt = Date.now();
+    if (template === 'acompanhamento') p.followUps.push({ at: p.lastBotAt, n: p.followUps.length + 1, manual: true });
     profiles.save();
   }
   return { to: p.num, verified: !!res?.key?.id, messageId: res?.key?.id || null };

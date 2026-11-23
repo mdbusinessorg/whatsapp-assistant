@@ -88,10 +88,6 @@ tool('reply_pending', 'Responde a clientes pendentes com o modelo de acompanhame
   for (const p of rows.sort((x, y) => y.score - x.score).slice(0, max)) {
     try {
       const r = await service.send(p.num, 'acompanhamento');
-      if (r.verified) {
-        p.followUps.push({ at: Date.now(), n: p.followUps.length + 1, manual: true });
-        sales().profiles.save();
-      }
       results.push({ ...r, name: p.name });
     } catch (e) {
       results.push({ to: p.num, verified: false, error: e.message });

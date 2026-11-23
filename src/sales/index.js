@@ -148,7 +148,7 @@ function startFollowUps({ send, getHistory, pushHistory, saveHistories, log }) {
     for (const p of followup.dueLeads(eligible).slice(0, 5)) {
       try {
         const msg = await composeFollowUp(p, getHistory(p.jid));
-        if (!msg) continue;
+        if (!msg || !followup.dueLeads([p]).length || profiles.chatNumber(p) !== p.num) continue;
         await send(p.jid, msg);
         pushHistory(p.jid, 'assistant', msg);
         saveHistories();
